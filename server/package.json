@@ -1,0 +1,49 @@
+{
+  "name": "sih26130-backend",
+  "version": "1.0.0",
+  "description": "Backend API for Industrial Approval, Compliance and Government Support Navigator (SIH26130)",
+  "main": "dist/server.js",
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "build": "tsc",
+    "start": "node dist/server.js",
+    "prisma:generate": "prisma generate",
+    "prisma:migrate": "prisma migrate dev",
+    "prisma:studio": "prisma studio",
+    "db:import-csv": "tsx data/scripts/import-approvals-csv.ts",
+    "db:import-approvals": "tsx src/scripts/importApprovals.ts",
+    "test:phase4": "tsx src/scripts/testPhase4.ts",
+    "test:phase5": "tsx src/scripts/testPhase5.ts",
+    "test:phase6": "tsx src/scripts/testPhase6.ts",
+    "test:phase7": "tsx src/scripts/testPhase7.ts",
+    "test:e2e": "tsx src/scripts/testEndToEnd.ts",
+    "test:all": "tsx src/scripts/testPhase4.ts && tsx src/scripts/testPhase5.ts && tsx src/scripts/testPhase6.ts && tsx src/scripts/testPhase7.ts && tsx src/scripts/testEndToEnd.ts",
+    "lint": "eslint src --ext .ts"
+  },
+  "dependencies": {
+    "@prisma/client": "^5.22.0",
+    "@types/bcryptjs": "^2.4.6",
+    "bcrypt": "^5.1.1",
+    "bcryptjs": "^3.0.3",
+    "cors": "^2.8.5",
+    "csv-parse": "^5.6.0",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "express-rate-limit": "^7.5.0",
+    "helmet": "^8.0.0",
+    "jsonwebtoken": "^9.0.2",
+    "multer": "^1.4.5-lts.1",
+    "zod": "^3.24.2"
+  },
+  "devDependencies": {
+    "@types/bcrypt": "^5.0.2",
+    "@types/cors": "^2.8.17",
+    "@types/express": "^4.17.21",
+    "@types/jsonwebtoken": "^9.0.9",
+    "@types/multer": "^1.4.12",
+    "@types/node": "^22.13.5",
+    "prisma": "^5.22.0",
+    "tsx": "^4.19.3",
+    "typescript": "^5.7.3"
+  }
+}

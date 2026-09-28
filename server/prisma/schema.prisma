@@ -1,0 +1,686 @@
+// Prisma Schema for SIH26130
+// Industrial Approval, Compliance and Government Support Navigator
+// Government of Maharashtra - Maharashtra State Innovation Society
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ==========================================
+// ENUMS
+// ==========================================
+
+enum UserRole {
+  CITIZEN
+  OFFICER
+  ADMIN
+}
+
+enum LegalEntityType {
+  PROPRIETORSHIP
+  PARTNERSHIP
+  LLP
+  PRIVATE_LIMITED
+  PUBLIC_LIMITED
+  ONE_PERSON_COMPANY
+  TRUST_SOCIETY
+  COOPERATIVE
+  OTHER
+}
+
+enum PollutionCategory {
+  RED
+  ORANGE
+  GREEN
+  WHITE
+  NOT_APPLICABLE
+}
+
+enum ApplicationStage {
+  DRAFT
+  SUBMITTED
+  UNDER_SCRUTINY
+  INSPECTION_SCHEDULED
+  APPROVED
+  REJECTED
+}
+
+enum ApprovalStage {
+  PRE_ESTABLISHMENT
+  PRE_OPERATION
+  OPERATIONAL
+}
+
+enum ApprovalStatus {
+  NOT_STARTED
+  APPLIED
+  IN_PROGRESS
+  QUERY_RAISED
+  INSPECTION_PENDING
+  APPROVED
+  REJECTED
+}
+
+enum VerificationStatus {
+  PENDING
+  PASSED
+  FAILED
+  WARNING
+}
+
+enum VerificationByType {
+  AI_AUTO
+  OFFICER_MANUAL
+}
+
+enum InspectionType {
+  JOINT_COMMON_INSPECTION
+  INDIVIDUAL
+}
+
+enum InspectionStatus {
+  SCHEDULED
+  COMPLETED
+  RESCHEDULED
+  CANCELLED
+}
+
+enum QueryStatus {
+  OPEN
+  RESPONDED
+  RESOLVED
+}
+
+enum ComplianceFrequency {
+  MONTHLY
+  QUARTERLY
+  HALF_YEARLY
+  ANNUAL
+}
+
+enum ComplianceStatus {
+  COMPLIANT
+  UPCOMING
+  OVERDUE
+}
+
+enum RenewalStatus {
+  VALID
+  DUE_SOON
+  OVERDUE
+  RENEWAL_FILED
+}
+
+enum NotificationType {
+  STATUS_UPDATE
+  QUERY
+  SLA_WARNING
+  INSPECTION
+  RENEWAL
+  SYSTEM
+}
+
+enum AppellateAuthority {
+  FIRST_APPELLATE
+  SECOND_APPELLATE
+}
+
+enum AppealGround {
+  SLA_BREACH
+  REJECTION_WITHOUT_REASON
+  UNREASONABLE_QUERY
+  CORRUPTION_HARASSMENT
+  OTHER
+}
+
+enum AppealStatus {
+  PENDING
+  HEARING_SCHEDULED
+  UPHELD
+  DIRECTED_CLEARANCE
+  DISMISSED
+}
+
+// ==========================================
+// MODELS (18 ENTITIES)
+// ==========================================
+
+// 1. Users
+model User {
+  id              String         @id @default(uuid())
+  email           String         @unique
+  passwordHash    String         @map("password_hash")
+  fullName        String         @map("full_name")
+  phone           String         @unique
+  role            UserRole       @default(CITIZEN)
+  isActive        Boolean        @default(true) @map("is_active")
+  departmentId    String?        @map("department_id")
+  designation     String?
+  createdAt       DateTime       @default(now()) @map("created_at")
+  updatedAt       DateTime       @updatedAt @map("updated_at")
+
+  // Relationships
+  department              Department?             @relation(fields: [departmentId], references: [id])
+  businessProfiles        BusinessProfile[]
+  applications            Application[]
+  documents               Document[]
+  notifications           Notification[]
+  auditLogs               AuditLog[]
+  officerVerifications    DocumentVerification[] @relation("OfficerVerifications")
+  assignedDepartmentApps  ApplicationDepartment[] @relation("AssignedOfficerApps")
+  leadInspections         Inspection[]           @relation("LeadOfficerInspections")
+  officerQueries          Query[]                @relation("OfficerQueries")
+  citizenQueries          Query[]                @relation("CitizenQueries")
+  appeals                 Appeal[]               @relation("CitizenAppeals")
+
+  @@index([email])
+  @@index([role])
+  @@map("users")
+}
+
+// 2. Business Profiles
+model BusinessProfile {
+  id                        String             @id @default(uuid())
+  userId                    String             @map("user_id")
+  businessName              String             @map("business_name")
+  legalEntityType           LegalEntityType    @default(PRIVATE_LIMITED) @map("legal_entity_type")
+  industrySector            String             @map("industry_sector")
+  nicCode                   String?            @map("nic_code")
+  businessActivity          String             @map("business_activity")
+  
+  // Location & Area Details
+  district                  String
+  taluka                    String
+  pinCode                   String             @map("pin_code")
+  isMidcArea                Boolean            @default(false) @map("is_midc_area")
+  midcEstateName            String?            @map("midc_estate_name")
+  surveyPlotNumber          String?            @map("survey_plot_number")
+  landAreaSqm               Decimal            @map("land_area_sqm") @db.Decimal(12, 2)
+  builtUpAreaSqm            Decimal            @map("built_up_area_sqm") @db.Decimal(12, 2)
+
+  // Scale & Financials
+  investmentPlantMachinery  Decimal            @map("investment_plant_machinery") @db.Decimal(14, 2)
+  investmentLandBuilding    Decimal            @map("investment_land_building") @db.Decimal(14, 2)
+  annualTurnover            Decimal?           @map("annual_turnover") @db.Decimal(14, 2)
+  employeeCount             Int                @map("employee_count")
+  femaleEmployeeCount       Int?               @default(0) @map("female_employee_count")
+  
+  // Technical & Industrial Parameters
+  productionCapacity        String?            @map("production_capacity")
+  productionUnit            String?            @map("production_unit")
+  powerRequirementKva       Decimal            @map("power_requirement_kva") @db.Decimal(10, 2)
+  waterRequirementKld       Decimal            @map("water_requirement_kld") @db.Decimal(10, 2)
+  waterSource               String?            @map("water_source")
+  
+  // Pollution & Environmental Parameters
+  pollutionCategory         PollutionCategory  @default(GREEN) @map("pollution_category")
+  effluentDischargeKld      Decimal            @default(0) @map("effluent_discharge_kld") @db.Decimal(10, 2)
+  hazardousWasteGeneration  Boolean            @default(false) @map("hazardous_waste_generation")
+  hasBoiler                 Boolean            @default(false) @map("has_boiler")
+  boilerCapacityTph         Decimal?           @map("boiler_capacity_tph") @db.Decimal(8, 2)
+  hasDgSet                  Boolean            @default(false) @map("has_dg_set")
+  dgSetCapacityKva          Decimal?           @map("dg_set_capacity_kva") @db.Decimal(10, 2)
+  
+  // Statutory Identifiers
+  gstRegistered             Boolean            @default(false) @map("gst_registered")
+  gstin                     String?
+  msmeRegistered            Boolean            @default(false) @map("msme_registered")
+  udyamNumber               String?            @map("udyam_number")
+  panNumber                 String?            @map("pan_number")
+
+  status                    String             @default("ACTIVE")
+  createdAt                 DateTime           @default(now()) @map("created_at")
+  updatedAt                 DateTime           @updatedAt @map("updated_at")
+
+  // Relationships
+  user              User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  applications      Application[]
+  complianceRecords ComplianceRecord[]
+  renewals          Renewal[]
+
+  @@index([userId])
+  @@index([district])
+  @@index([industrySector])
+  @@map("business_profiles")
+}
+
+// 3. Applications
+model Application {
+  id                  String             @id @default(uuid())
+  userId              String             @map("user_id")
+  businessProfileId   String             @map("business_profile_id")
+  applicationNumber   String             @unique @map("application_number")
+  stage               ApplicationStage   @default(DRAFT)
+  overallProgress     Int                @default(0) @map("overall_progress") // 0 to 100 percentage
+  projectStage        ApprovalStage      @default(PRE_ESTABLISHMENT) @map("project_stage")
+  totalApprovalsCount Int                @default(0) @map("total_approvals_count")
+  approvedCount       Int                @default(0) @map("approved_count")
+  rejectedCount       Int                @default(0) @map("rejected_count")
+  queryPendingCount   Int                @default(0) @map("query_pending_count")
+  
+  submittedAt         DateTime?          @map("submitted_at")
+  targetCompletionDate DateTime?         @map("target_completion_date")
+  completedAt         DateTime?          @map("completed_at")
+  createdAt           DateTime           @default(now()) @map("created_at")
+  updatedAt           DateTime           @updatedAt @map("updated_at")
+
+  // Relationships
+  user                   User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  businessProfile        BusinessProfile         @relation(fields: [businessProfileId], references: [id], onDelete: Cascade)
+  applicationApprovals   ApplicationApproval[]
+  applicationDepartments ApplicationDepartment[]
+  documents              Document[]
+  inspections            Inspection[]
+  queries                Query[]
+  appeals                Appeal[]
+
+  @@index([userId])
+  @@index([applicationNumber])
+  @@index([stage])
+  @@map("applications")
+}
+
+// 4. Departments
+model Department {
+  id                  String         @id @default(uuid())
+  code                String         @unique // e.g. MPCB, MIDC, DISH, FIRE, MSEDCL, REVENUE
+  name                String         // Maharashtra Pollution Control Board
+  nameMarathi         String?        @map("name_marathi")
+  description         String?
+  portalUrl           String?        @map("portal_url")
+  nodalOfficerEmail   String?        @map("nodal_officer_email")
+  nodalOfficerPhone   String?        @map("nodal_officer_phone")
+  slaWorkingDays      Int            @default(30) @map("sla_working_days")
+  isActive            Boolean        @default(true) @map("is_active")
+  createdAt           DateTime       @default(now()) @map("created_at")
+  updatedAt           DateTime       @updatedAt @map("updated_at")
+
+  // Relationships
+  users                  User[]
+  approvals              Approval[]
+  schemes                Scheme[]
+  applicationDepartments ApplicationDepartment[]
+  applicationApprovals   ApplicationApproval[]
+  queries                Query[]
+
+  @@index([code])
+  @@map("departments")
+}
+
+// 5. Approvals (Master Catalog)
+model Approval {
+  id                     String             @id @default(uuid())
+  departmentId           String             @map("department_id")
+  approvalCode           String             @unique @map("approval_code") // e.g. MPCB_CTE, DISH_FACT_LIC
+  name                   String
+  nameMarathi            String?            @map("name_marathi")
+  stage                  ApprovalStage      @default(PRE_ESTABLISHMENT)
+  category               String             // NOC, LICENCE, REGISTRATION, PERMISSION, INSPECTION
+  description            String
+  statutoryAct           String             @map("statutory_act") // e.g. Water Act 1974, Factories Act 1948
+  statutoryTimelineDays  Int                @map("statutory_timeline_days") // RTS Maharashtra guarantee
+  feeStructureDetails    String?            @map("fee_structure_details")
+  validityPeriodMonths   Int?               @map("validity_period_months")
+  renewalRequired        Boolean            @default(false) @map("renewal_required")
+  requiredDocCodes       String[]           @default([]) @map("required_doc_codes")
+  externalPortalLink     String?            @map("external_portal_link")
+  isActive               Boolean            @default(true) @map("is_active")
+  createdAt              DateTime           @default(now()) @map("created_at")
+  updatedAt              DateTime           @updatedAt @map("updated_at")
+
+  // Relationships
+  department           Department            @relation(fields: [departmentId], references: [id])
+  rules                ApprovalRule[]
+  applicationApprovals ApplicationApproval[]
+  complianceRecords    ComplianceRecord[]
+
+  @@index([approvalCode])
+  @@index([departmentId])
+  @@index([stage])
+  @@map("approvals")
+}
+
+// 6. Approval Rules (Rule/Matching Engine criteria)
+model ApprovalRule {
+  id             String      @id @default(uuid())
+  approvalId     String      @map("approval_id")
+  ruleCode       String      @unique @map("rule_code")
+  ruleName       String      @map("rule_name")
+  description    String?
+  conditionsJson Json        @map("conditions_json") // Structured rule predicates
+  priority       Int         @default(100)
+  explanationTpl String      @map("explanation_tpl") // Template for AI explanation
+  isActive       Boolean     @default(true) @map("is_active")
+  createdAt      DateTime    @default(now()) @map("created_at")
+  updatedAt      DateTime    @updatedAt @map("updated_at")
+
+  // Relationships
+  approval       Approval    @relation(fields: [approvalId], references: [id], onDelete: Cascade)
+
+  @@index([approvalId])
+  @@index([ruleCode])
+  @@map("approval_rules")
+}
+
+// 7. Application Approvals (Instantiated approvals for a specific application)
+model ApplicationApproval {
+  id                  String         @id @default(uuid())
+  applicationId       String         @map("application_id")
+  approvalId          String         @map("approval_id")
+  departmentId        String         @map("department_id")
+  status              ApprovalStatus @default(NOT_STARTED)
+  triggerReason       String         @map("trigger_reason")
+  slaDeadline         DateTime?      @map("sla_deadline")
+  appliedAt           DateTime?      @map("applied_at")
+  approvedDate        DateTime?      @map("approved_date")
+  certificateUrl      String?        @map("certificate_url")
+  certificateNumber   String?        @map("certificate_number")
+  remarks             String?
+  createdAt           DateTime       @default(now()) @map("created_at")
+  updatedAt           DateTime       @updatedAt @map("updated_at")
+
+  // Relationships
+  application         Application    @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  approval            Approval       @relation(fields: [approvalId], references: [id])
+  department          Department     @relation(fields: [departmentId], references: [id])
+  renewals            Renewal[]
+  queries             Query[]
+
+  @@unique([applicationId, approvalId])
+  @@index([applicationId])
+  @@index([departmentId])
+  @@index([status])
+  @@map("application_approvals")
+}
+
+// 8. Documents
+model Document {
+  id                 String                 @id @default(uuid())
+  userId             String                 @map("user_id")
+  applicationId      String?                @map("application_id")
+  documentTypeCode   String                 @map("document_type_code") // e.g. DOC_7_12, DOC_PAN, DOC_PROJECT_REPORT
+  documentName       String                 @map("document_name")
+  fileUrl            String                 @map("file_url")
+  fileName           String                 @map("file_name")
+  fileSize           Int                    @map("file_size") // bytes
+  mimeType           String                 @map("mime_type")
+  fileHash           String                 @map("file_hash") // SHA256 checksum
+  isWalletItem       Boolean                @default(false) @map("is_wallet_item")
+  isVerified         Boolean                @default(false) @map("is_verified")
+  expiryDate         DateTime?              @map("expiry_date")
+  createdAt          DateTime               @default(now()) @map("created_at")
+  updatedAt          DateTime               @updatedAt @map("updated_at")
+
+  // Relationships
+  user               User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  application        Application?           @relation(fields: [applicationId], references: [id], onDelete: SetNull)
+  verifications      DocumentVerification[]
+
+  @@index([userId])
+  @@index([applicationId])
+  @@index([documentTypeCode])
+  @@index([isWalletItem])
+  @@map("documents")
+}
+
+// 9. Document Verifications
+model DocumentVerification {
+  id                String              @id @default(uuid())
+  documentId        String              @map("document_id")
+  verifiedByType    VerificationByType  @default(AI_AUTO) @map("verified_by_type")
+  officerId         String?             @map("officer_id")
+  verificationStatus VerificationStatus @default(PENDING) @map("verification_status")
+  confidenceScore   Decimal?            @map("confidence_score") @db.Decimal(5, 2) // 0-100%
+  aiExtractedData   Json?               @map("ai_extracted_data")
+  verificationNotes String?             @map("verification_notes")
+  checkedAt         DateTime            @default(now()) @map("checked_at")
+
+  // Relationships
+  document          Document            @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  officer           User?               @relation("OfficerVerifications", fields: [officerId], references: [id])
+
+  @@index([documentId])
+  @@index([verificationStatus])
+  @@map("document_verifications")
+}
+
+// 10. Application Departments (Departmental slice of multi-department application)
+model ApplicationDepartment {
+  id                  String             @id @default(uuid())
+  applicationId       String             @map("application_id")
+  departmentId        String             @map("department_id")
+  assignedOfficerId   String?            @map("assigned_officer_id")
+  overallStatus       ApprovalStatus     @default(NOT_STARTED) @map("overall_status")
+  scrutinyNotes       String?            @map("scrutiny_notes")
+  slaDueDate          DateTime?          @map("sla_due_date")
+  createdAt           DateTime           @default(now()) @map("created_at")
+  updatedAt           DateTime           @updatedAt @map("updated_at")
+
+  // Relationships
+  application         Application        @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  department          Department         @relation(fields: [departmentId], references: [id])
+  assignedOfficer     User?              @relation("AssignedOfficerApps", fields: [assignedOfficerId], references: [id])
+
+  @@unique([applicationId, departmentId])
+  @@index([applicationId])
+  @@index([departmentId])
+  @@index([overallStatus])
+  @@map("application_departments")
+}
+
+// 11. Inspections
+model Inspection {
+  id                  String           @id @default(uuid())
+  applicationId       String           @map("application_id")
+  departmentIds       String[]         @default([]) @map("department_ids")
+  inspectionType      InspectionType   @default(JOINT_COMMON_INSPECTION) @map("inspection_type")
+  scheduledDate       DateTime         @map("scheduled_date")
+  status              InspectionStatus @default(SCHEDULED)
+  leadOfficerId       String?          @map("lead_officer_id")
+  siteAddress         String           @map("site_address")
+  findingsReportUrl   String?          @map("findings_report_url")
+  checklistResponse   Json?            @map("checklist_response")
+  officerNotes        String?          @map("officer_notes")
+  createdAt           DateTime         @default(now()) @map("created_at")
+  updatedAt           DateTime         @updatedAt @map("updated_at")
+
+  // Relationships
+  application         Application      @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  leadOfficer         User?            @relation("LeadOfficerInspections", fields: [leadOfficerId], references: [id])
+
+  @@index([applicationId])
+  @@index([status])
+  @@index([scheduledDate])
+  @@map("inspections")
+}
+
+// 12. Schemes & Incentives (Maharashtra PSI, Subsidies, etc.)
+model Scheme {
+  id                      String        @id @default(uuid())
+  departmentId            String?       @map("department_id")
+  schemeCode              String        @unique @map("scheme_code")
+  schemeName              String        @map("scheme_name")
+  eligibleSectors         String[]      @default([]) @map("eligible_sectors")
+  eligibleDistricts       String[]      @default([]) @map("eligible_districts") // e.g. Group A, B, C, D, D+
+  minInvestment           Decimal?      @map("min_investment") @db.Decimal(14, 2)
+  maxInvestment           Decimal?      @map("max_investment") @db.Decimal(14, 2)
+  subsidyPercentage       Decimal?      @map("subsidy_percentage") @db.Decimal(5, 2)
+  benefitsDescription     String        @map("benefits_description")
+  eligibilityCriteriaJson Json          @map("eligibility_criteria_json")
+  policyReference         String        @map("policy_reference") // e.g. Maharashtra Industrial Policy 2019
+  applicationUrl          String?       @map("application_url")
+  validityEndDate         DateTime?     @map("validity_end_date")
+  isActive                Boolean       @default(true) @map("is_active")
+  createdAt               DateTime      @default(now()) @map("created_at")
+  updatedAt               DateTime      @updatedAt @map("updated_at")
+
+  // Relationships
+  department              Department?   @relation(fields: [departmentId], references: [id])
+
+  @@index([schemeCode])
+  @@index([isActive])
+  @@map("schemes")
+}
+
+// 13. Compliance Records (Ongoing operational post-approval compliance)
+model ComplianceRecord {
+  id                 String              @id @default(uuid())
+  businessProfileId  String              @map("business_profile_id")
+  approvalId         String?             @map("approval_id")
+  complianceTitle    String              @map("compliance_title") // e.g. Annual Environmental Statement (Form V)
+  frequency          ComplianceFrequency @default(ANNUAL)
+  nextDueDate        DateTime            @map("next_due_date")
+  lastSubmittedDate  DateTime?           @map("last_submitted_date")
+  status             ComplianceStatus    @default(UPCOMING)
+  statutoryRule      String?             @map("statutory_rule")
+  penaltyTerms       String?             @map("penalty_terms")
+  evidenceDocUrl     String?             @map("evidence_doc_url")
+  createdAt          DateTime            @default(now()) @map("created_at")
+  updatedAt          DateTime            @updatedAt @map("updated_at")
+
+  // Relationships
+  businessProfile    BusinessProfile     @relation(fields: [businessProfileId], references: [id], onDelete: Cascade)
+  approval           Approval?           @relation(fields: [approvalId], references: [id])
+
+  @@index([businessProfileId])
+  @@index([nextDueDate])
+  @@index([status])
+  @@map("compliance_records")
+}
+
+// 14. Renewals
+model Renewal {
+  id                    String              @id @default(uuid())
+  applicationApprovalId String              @map("application_approval_id")
+  businessProfileId     String              @map("business_profile_id")
+  expiryDate            DateTime            @map("expiry_date")
+  renewalWindowDays     Int                 @default(60) @map("renewal_window_days")
+  renewalStatus         RenewalStatus       @default(VALID) @map("renewal_status")
+  reminderSentAt        DateTime?           @map("reminder_sent_at")
+  renewalFiledAt        DateTime?           @map("renewal_filed_at")
+  notes                 String?
+  createdAt             DateTime            @default(now()) @map("created_at")
+  updatedAt             DateTime            @updatedAt @map("updated_at")
+
+  // Relationships
+  applicationApproval   ApplicationApproval @relation(fields: [applicationApprovalId], references: [id], onDelete: Cascade)
+  businessProfile       BusinessProfile     @relation(fields: [businessProfileId], references: [id], onDelete: Cascade)
+
+  @@index([applicationApprovalId])
+  @@index([businessProfileId])
+  @@index([expiryDate])
+  @@index([renewalStatus])
+  @@map("renewals")
+}
+
+// 15. Notifications
+model Notification {
+  id          String           @id @default(uuid())
+  userId      String           @map("user_id")
+  title       String
+  message     String
+  type        NotificationType @default(STATUS_UPDATE)
+  isRead      Boolean          @default(false) @map("is_read")
+  linkUrl     String?          @map("link_url")
+  metadataJson Json?           @map("metadata_json")
+  createdAt   DateTime         @default(now()) @map("created_at")
+
+  // Relationships
+  user        User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([isRead])
+  @@map("notifications")
+}
+
+// 16. Queries (Department Officer <-> Citizen clarifications)
+model Query {
+  id                    String              @id @default(uuid())
+  applicationId         String              @map("application_id")
+  applicationApprovalId String?             @map("application_approval_id")
+  departmentId          String              @map("department_id")
+  officerId             String              @map("officer_id")
+  citizenId             String              @map("citizen_id")
+  querySubject          String              @map("query_subject")
+  queryDescription      String              @map("query_description")
+  officerAttachments    String[]            @default([]) @map("officer_attachments")
+  citizenResponse       String?             @map("citizen_response")
+  citizenAttachments    String[]            @default([]) @map("citizen_attachments")
+  status                QueryStatus         @default(OPEN)
+  raisedAt              DateTime            @default(now()) @map("raised_at")
+  respondedAt           DateTime?           @map("responded_at")
+  resolvedAt            DateTime?           @map("resolved_at")
+
+  // Relationships
+  application           Application         @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  applicationApproval   ApplicationApproval? @relation(fields: [applicationApprovalId], references: [id])
+  department            Department          @relation(fields: [departmentId], references: [id])
+  officer               User                @relation("OfficerQueries", fields: [officerId], references: [id])
+  citizen               User                @relation("CitizenQueries", fields: [citizenId], references: [id])
+
+  @@index([applicationId])
+  @@index([departmentId])
+  @@index([officerId])
+  @@index([citizenId])
+  @@index([status])
+  @@map("queries")
+}
+
+// 17. Audit Logs (Security, Compliance, SLA tracing)
+model AuditLog {
+  id          String   @id @default(uuid())
+  userId      String?  @map("user_id")
+  userRole    String?  @map("user_role")
+  action      String   // LOGIN, LOGOUT, SUBMIT_APP, APPROVE, REJECT, RAISE_QUERY, VERIFY_DOC
+  entityName  String   @map("entity_name") // APPLICATION, DOCUMENT, USER, etc.
+  entityId    String?  @map("entity_id")
+  ipAddress   String?  @map("ip_address")
+  userAgent   String?  @map("user_agent")
+  detailsJson Json?    @map("details_json")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  // Relationships
+  user        User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([action])
+  @@index([entityName])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+// 18. Appeals (Maharashtra Right to Public Services Act 2015 - Statutory Grievance Redressal)
+model Appeal {
+  id                 String             @id @default(uuid())
+  appealNumber       String             @unique @map("appeal_number")
+  applicationId      String             @map("application_id")
+  citizenId          String             @map("citizen_id")
+  departmentCode     String             @map("department_code")
+  appellateAuthority AppellateAuthority @default(FIRST_APPELLATE) @map("appellate_authority")
+  groundForAppeal    AppealGround       @default(SLA_BREACH) @map("ground_for_appeal")
+  applicantStatement String             @map("applicant_statement") @db.Text
+  status             AppealStatus       @default(PENDING)
+  officerRemarks     String?            @map("officer_remarks") @db.Text
+  hearingDate        DateTime?          @map("hearing_date")
+  orderDocumentUrl   String?            @map("order_document_url")
+  decidedAt          DateTime?          @map("decided_at")
+  decidedBy          String?            @map("decided_by")
+  createdAt          DateTime           @default(now()) @map("created_at")
+  updatedAt          DateTime           @updatedAt @map("updated_at")
+
+  // Relationships
+  application        Application        @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  citizen            User               @relation("CitizenAppeals", fields: [citizenId], references: [id], onDelete: Cascade)
+
+  @@index([applicationId])
+  @@index([citizenId])
+  @@index([departmentCode])
+  @@index([status])
+  @@map("appeals")
+}
+
