@@ -306,7 +306,6 @@ class DatabaseService {
   constructor() {
     this.prisma = new PrismaClient();
     this.initMasterData();
-    this.initSeedUsers();
     this.setupAuditLogHooks();
     this.checkConnection();
   }
@@ -366,15 +365,98 @@ class DatabaseService {
     };
   }
 
+  public async syncWithDatabase() {
+    if (!this.isPostgresConnected) return;
+    try {
+      const depts = await this.prisma.department.findMany({ where: { isActive: true } });
+      if (depts.length > 0) {
+        this.departments = depts.map(d => ({
+          id: d.id,
+          code: d.code,
+          name: d.name,
+          nameMarathi: d.nameMarathi || undefined,
+          description: d.description || undefined,
+          portalUrl: d.portalUrl || undefined,
+          nodalOfficerEmail: d.nodalOfficerEmail || undefined,
+          slaWorkingDays: d.slaWorkingDays,
+          isActive: d.isActive,
+        }));
+      }
+
+      const apps = await this.prisma.approval.findMany({
+        where: { isActive: true },
+        include: { department: true },
+      });
+      if (apps.length > 0) {
+        this.approvals = apps.map(a => ({
+          id: a.id,
+          departmentId: a.departmentId,
+          departmentCode: a.department.code,
+          approvalCode: a.approvalCode,
+          name: a.name,
+          nameMarathi: a.nameMarathi || undefined,
+          stage: a.stage as any,
+          category: a.category,
+          description: a.description,
+          statutoryAct: a.statutoryAct,
+          statutoryTimelineDays: a.statutoryTimelineDays,
+          validityPeriodMonths: a.validityPeriodMonths || undefined,
+          renewalRequired: a.renewalRequired,
+          requiredDocCodes: a.requiredDocCodes,
+          feeStructureDetails: a.feeStructureDetails || undefined,
+          externalPortalLink: a.externalPortalLink || undefined,
+          isActive: a.isActive,
+        }));
+      }
+
+      const rls = await this.prisma.approvalRule.findMany({
+        where: { isActive: true },
+        include: { approval: true },
+      });
+      if (rls.length > 0) {
+        this.rules = rls.map(r => ({
+          id: r.id,
+          approvalCode: r.approval.approvalCode,
+          ruleCode: r.ruleCode,
+          ruleName: r.ruleName,
+          priority: r.priority,
+          conditionsJson: r.conditionsJson,
+          explanationTpl: r.explanationTpl,
+        }));
+      }
+
+      const schs = await this.prisma.scheme.findMany({
+        where: { isActive: true },
+        include: { department: true },
+      });
+      if (schs.length > 0) {
+        this.schemes = schs.map(s => ({
+          id: s.id,
+          code: s.schemeCode,
+          name: s.schemeName,
+          category: 'CAPITAL_SUBSIDY',
+          departmentCode: s.department?.code || 'INDUSTRY',
+          subsidyPercentage: s.subsidyPercentage ? Number(s.subsidyPercentage) : undefined,
+          maxBenefitAmountInr: s.maxInvestment ? Number(s.maxInvestment) : undefined,
+          description: s.benefitsDescription,
+          eligibilitySummary: s.benefitsDescription,
+          portalUrl: s.applicationUrl || undefined,
+        }));
+      }
+    } catch (err) {
+      console.warn('[Database] Error synchronizing master data from PostgreSQL:', err);
+    }
+  }
+
   private async checkConnection() {
     try {
       await this.prisma.$connect();
       this.isPostgresConnected = true;
       console.log('✅ [Database] PostgreSQL connected successfully via Prisma Client.');
+      await this.syncWithDatabase();
     } catch (err: any) {
       this.isPostgresConnected = false;
       console.warn('⚠️ [Database] PostgreSQL is currently offline at localhost:5432.');
-      console.warn('⚡ [Database] Switched to high-fidelity In-Memory Fallback Engine. All APIs, Auth, & RBAC operational.');
     }
   }
 
@@ -816,362 +898,6 @@ class DatabaseService {
         portalUrl: 'https://ecmpcb.in',
       },
     ];
-  }
-
-  private initSeedUsers() {
-    const salt = bcrypt.genSaltSync(10);
-
-    // 1. Citizen Seed Account
-    const citizenUser: StoredUser = {
-      id: 'user-citizen-demo',
-      email: 'citizen@demo.gov.in',
-      passwordHash: bcrypt.hashSync('Citizen@1234', salt),
-      fullName: 'Vikram Shinde',
-      phone: '9822012345',
-      role: 'CITIZEN',
-      isActive: true,
-      departmentId: null,
-      designation: null,
-      createdAt: new Date('2026-01-15T09:00:00Z'),
-      updatedAt: new Date(),
-    };
-
-    // 2. Officer Seed Account (MPCB Scrutiny Officer)
-    const officerUser: StoredUser = {
-      id: 'user-officer-mpcb',
-      email: 'officer@mpcb.gov.in',
-      passwordHash: bcrypt.hashSync('Officer@1234', salt),
-      fullName: 'Dr. Rahul Deshmukh',
-      phone: '9822054321',
-      role: 'OFFICER',
-      isActive: true,
-      departmentId: 'dept-mpcb',
-      designation: 'Sub-Regional Scrutiny Officer',
-      createdAt: new Date('2026-01-10T09:00:00Z'),
-      updatedAt: new Date(),
-    };
-
-    // 3. Admin Seed Account
-    const adminUser: StoredUser = {
-      id: 'user-admin-maha',
-      email: 'admin@maha.gov.in',
-      passwordHash: bcrypt.hashSync('Admin@1234', salt),
-      fullName: 'Pooja Patil',
-      phone: '9822099999',
-      role: 'ADMIN',
-      isActive: true,
-      departmentId: null,
-      designation: 'Director of Industry Operations',
-      createdAt: new Date('2026-01-01T09:00:00Z'),
-      updatedAt: new Date(),
-    };
-
-    this.users.push(citizenUser, officerUser, adminUser);
-
-    // Seed Citizen Business Profile
-    const profile: StoredBusinessProfile = {
-      id: 'profile-demo-vikram',
-      userId: citizenUser.id,
-      businessName: 'Sahyadri Precision Agro-Engineering Pvt Ltd',
-      legalEntityType: 'PRIVATE_LIMITED',
-      industrySector: 'Automotive & Heavy Engineering',
-      nicCode: '2821',
-      businessActivity: 'Manufacturing of precision harvester components & farm machinery',
-      district: 'Pune',
-      taluka: 'Haveli',
-      pinCode: '411028',
-      isMidcArea: true,
-      midcEstateName: 'Chakan Industrial Area Phase II',
-      surveyPlotNumber: 'Plot No. C-42/1',
-      landAreaSqm: 4500,
-      builtUpAreaSqm: 2200,
-      investmentPlantMachinery: 45000000,
-      investmentLandBuilding: 32000000,
-      annualTurnover: 85000000,
-      employeeCount: 48,
-      femaleEmployeeCount: 14,
-      productionCapacity: '15,000 units/annum',
-      productionUnit: 'Units',
-      powerRequirementKva: 250,
-      waterRequirementKld: 25,
-      waterSource: 'MIDC Water Supply',
-      pollutionCategory: 'ORANGE',
-      effluentDischargeKld: 5,
-      hazardousWasteGeneration: true,
-      hasBoiler: true,
-      boilerCapacityTph: 2,
-      hasDgSet: true,
-      dgSetCapacityKva: 125,
-      gstRegistered: true,
-      gstin: '27AABCS1429B1Z8',
-      msmeRegistered: true,
-      udyamNumber: 'UDYAM-MH-26-0045129',
-      panNumber: 'AABCS1429B',
-      status: 'ACTIVE',
-      createdAt: new Date('2026-01-20T10:00:00Z'),
-      updatedAt: new Date(),
-    };
-    this.businessProfiles.push(profile);
-
-    // Seed Application
-    const app: StoredApplication = {
-      id: 'app-demo-sahyadri',
-      userId: citizenUser.id,
-      businessProfileId: profile.id,
-      applicationNumber: 'MH-2026-IND-04821',
-      stage: 'UNDER_SCRUTINY',
-      overallProgress: 68,
-      projectStage: 'PRE_ESTABLISHMENT',
-      totalApprovalsCount: 5,
-      approvedCount: 2,
-      rejectedCount: 0,
-      queryPendingCount: 1,
-      submittedAt: new Date('2026-02-01T11:00:00Z'),
-      targetCompletionDate: new Date('2026-03-15T18:00:00Z'),
-      createdAt: new Date('2026-01-25T14:00:00Z'),
-      updatedAt: new Date(),
-      approvals: [
-        {
-          id: 'aa-1',
-          applicationId: 'app-demo-sahyadri',
-          approvalId: 'appr-mpcb-cte',
-          approvalCode: 'MPCB_CTE',
-          approvalName: 'Consent to Establish (CTE)',
-          departmentCode: 'MPCB',
-          status: 'QUERY_RAISED',
-          statutorySlaDays: 45,
-          targetCompletionDate: new Date('2026-03-18T00:00:00Z'),
-          remarks: 'Awaiting revised ETP layout for secondary filtration unit',
-          appliedDate: new Date('2026-02-01T00:00:00Z'),
-        },
-        {
-          id: 'aa-2',
-          applicationId: 'app-demo-sahyadri',
-          approvalId: 'appr-fire-prov',
-          approvalCode: 'FIRE_PROVISIONAL_NOC',
-          approvalName: 'Provisional Fire Safety NOC',
-          departmentCode: 'FIRE',
-          status: 'APPROVED',
-          statutorySlaDays: 21,
-          approvedAt: new Date('2026-02-14T00:00:00Z'),
-          remarks: 'Architectural drawings compliant with NBC 2016 Part 4',
-          appliedDate: new Date('2026-02-01T00:00:00Z'),
-        },
-        {
-          id: 'aa-3',
-          applicationId: 'app-demo-sahyadri',
-          approvalId: 'appr-midc-plan',
-          approvalCode: 'MIDC_BLDG_PLAN',
-          approvalName: 'Building Plan Approval & Commencement Certificate',
-          departmentCode: 'MIDC',
-          status: 'APPROVED',
-          statutorySlaDays: 30,
-          approvedAt: new Date('2026-02-20T00:00:00Z'),
-          remarks: 'Commencement certificate CC-MIDC-CHK-2026-88 issued',
-          appliedDate: new Date('2026-02-01T00:00:00Z'),
-        },
-        {
-          id: 'aa-4',
-          applicationId: 'app-demo-sahyadri',
-          approvalId: 'appr-msedcl-ht',
-          approvalCode: 'MSEDCL_HT_CONNECTION',
-          approvalName: 'High Tension (HT) Industrial Power Sanction',
-          departmentCode: 'MSEDCL',
-          status: 'IN_PROGRESS',
-          statutorySlaDays: 15,
-          targetCompletionDate: new Date('2026-03-05T00:00:00Z'),
-          remarks: 'Substation load feasibility inspection underway',
-          appliedDate: new Date('2026-02-01T00:00:00Z'),
-        },
-        {
-          id: 'aa-5',
-          applicationId: 'app-demo-sahyadri',
-          approvalId: 'appr-boiler-reg',
-          approvalCode: 'BOILER_REG',
-          approvalName: 'Boiler Registration & Inspection',
-          departmentCode: 'BOILER',
-          status: 'INSPECTION_PENDING',
-          statutorySlaDays: 30,
-          targetCompletionDate: new Date('2026-03-25T00:00:00Z'),
-          remarks: 'Joint common inspection scheduled for March 10',
-          appliedDate: new Date('2026-02-01T00:00:00Z'),
-        },
-      ],
-    };
-    this.applications.push(app);
-
-    // Seed Documents
-    this.documents = [
-      {
-        id: 'doc-pan',
-        userId: citizenUser.id,
-        applicationId: app.id,
-        documentType: 'DOC_PAN',
-        title: 'Company PAN Card',
-        fileName: 'pan_card_sahyadri.pdf',
-        fileSize: 482910,
-        mimeType: 'application/pdf',
-        fileUrl: '/uploads/pan_card_sahyadri.pdf',
-        verificationStatus: 'PASSED',
-        confidenceScore: 98.5,
-        uploadedAt: new Date('2026-01-26T12:00:00Z'),
-      },
-      {
-        id: 'doc-project-rep',
-        userId: citizenUser.id,
-        applicationId: app.id,
-        documentType: 'DOC_PROJECT_REPORT',
-        title: 'Detailed Project Report (DPR)',
-        fileName: 'dpr_sahyadri_engineering_2026.pdf',
-        fileSize: 3241098,
-        mimeType: 'application/pdf',
-        fileUrl: '/uploads/dpr_sahyadri_engineering_2026.pdf',
-        verificationStatus: 'PASSED',
-        confidenceScore: 96.0,
-        uploadedAt: new Date('2026-01-26T12:05:00Z'),
-      },
-      {
-        id: 'doc-site-plan',
-        userId: citizenUser.id,
-        applicationId: app.id,
-        documentType: 'DOC_SITE_PLAN',
-        title: 'Factory Layout & Site Blueprint',
-        fileName: 'factory_site_layout_signed.pdf',
-        fileSize: 5821094,
-        mimeType: 'application/pdf',
-        fileUrl: '/uploads/factory_site_layout_signed.pdf',
-        verificationStatus: 'PASSED',
-        confidenceScore: 94.2,
-        uploadedAt: new Date('2026-01-26T12:10:00Z'),
-      },
-    ];
-
-    // Seed Common Inspection
-    this.inspections.push({
-      id: 'insp-chakan-01',
-      applicationId: app.id,
-      inspectionType: 'JOINT_COMMON_INSPECTION',
-      status: 'SCHEDULED',
-      scheduledDate: '2026-03-10',
-      timeSlot: '11:00 AM - 02:00 PM',
-      location: 'Plot No. C-42/1, Chakan MIDC Phase II, Pune',
-      participatingDepartments: ['MPCB', 'DISH', 'BOILER', 'FIRE'],
-      leadOfficerName: 'Dr. Rahul Deshmukh (MPCB)',
-      notes: 'Unified joint site inspection for effluent treatment setup and boiler mounting clearance.',
-      createdAt: new Date('2026-02-15T09:00:00Z'),
-    });
-
-    // Seed Compliances
-    this.compliances.push(
-      {
-        id: 'comp-1',
-        userId: citizenUser.id,
-        businessProfileId: profile.id,
-        title: 'Quarterly Environmental Cess & Emission Return',
-        statutoryAct: 'Water (Prevention & Control of Pollution) Cess Act',
-        frequency: 'QUARTERLY',
-        dueDate: '2026-03-31',
-        status: 'PENDING',
-      },
-      {
-        id: 'comp-2',
-        userId: citizenUser.id,
-        businessProfileId: profile.id,
-        title: 'Annual Factory Safety Audit Report Submission',
-        statutoryAct: 'Factories Act 1948 - Section 41B',
-        frequency: 'ANNUAL',
-        dueDate: '2026-04-30',
-        status: 'PENDING',
-      }
-    );
-
-    // Seed Renewals
-    this.renewals.push({
-      id: 'ren-1',
-      userId: citizenUser.id,
-      businessProfileId: profile.id,
-      licenceName: 'Consent to Operate (Air & Water)',
-      licenceNumber: 'MPCB/RO-PUNE/CONSENT-10482',
-      issuingDepartment: 'Maharashtra Pollution Control Board',
-      validUntil: '2027-02-28',
-      status: 'VALID',
-    });
-
-    // Seed Notifications
-    this.notifications.push(
-      {
-        id: 'notif-1',
-        userId: citizenUser.id,
-        title: 'Fire Safety NOC Approved',
-        message: 'Your Provisional Fire Safety NOC has been verified and issued by Maharashtra Fire Services.',
-        type: 'STATUS_UPDATE',
-        isRead: true,
-        linkUrl: '/approval-tracker',
-        createdAt: new Date('2026-02-14T10:30:00Z'),
-      },
-      {
-        id: 'notif-2',
-        userId: citizenUser.id,
-        title: 'Action Required: MPCB Scrutiny Query',
-        message: 'MPCB officer has requested a clarification regarding your secondary filtration unit.',
-        type: 'QUERY',
-        isRead: false,
-        linkUrl: '/approval-tracker',
-        createdAt: new Date('2026-02-18T14:15:00Z'),
-      },
-      {
-        id: 'notif-3',
-        userId: citizenUser.id,
-        title: 'Joint Common Inspection Scheduled',
-        message: 'A unified joint inspection with MPCB, DISH, and Boilers has been scheduled for March 10, 2026.',
-        type: 'INSPECTION',
-        isRead: false,
-        linkUrl: '/inspection-scheduler',
-        createdAt: new Date('2026-02-20T16:00:00Z'),
-      }
-    );
-
-    // Seed Queries
-    this.queries.push({
-      id: 'qry-1',
-      applicationId: app.id,
-      officerId: officerUser.id,
-      citizenId: citizenUser.id,
-      approvalCode: 'MPCB_CTE',
-      subject: 'Clarification on Effluent Treatment Plant (ETP) capacity',
-      question: 'Please submit the engineering layout of the neutralization tank and secondary filtration flow calculations.',
-      status: 'OPEN',
-      createdAt: new Date('2026-02-18T14:00:00Z'),
-    });
-
-    // Seed Audit Log
-    this.auditLogs.push({
-      id: 'audit-1',
-      userId: citizenUser.id,
-      userRole: 'CITIZEN',
-      action: 'APPLICATION_SUBMITTED',
-      entityName: 'Application',
-      entityId: app.id,
-      details: { applicationNumber: app.applicationNumber, totalApprovals: 5 },
-      ipAddress: '103.21.124.5',
-      userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
-      createdAt: new Date('2026-02-01T11:00:00Z'),
-    });
-
-    // Seed RTS Statutory Appeal
-    this.appeals.push({
-      id: 'appeal-1',
-      appealNumber: 'MH-RTS-APP-2026-0042',
-      applicationId: app.id,
-      citizenId: citizenUser.id,
-      departmentCode: 'MPCB',
-      appellateAuthority: 'FIRST_APPELLATE',
-      groundForAppeal: 'SLA_BREACH',
-      applicantStatement: 'Consent to Establish review delayed beyond statutory 45 days timeline without recorded justification.',
-      status: 'HEARING_SCHEDULED',
-      hearingDate: '2026-10-10',
-      createdAt: new Date('2026-02-25T10:00:00Z'),
-    });
   }
 }
 

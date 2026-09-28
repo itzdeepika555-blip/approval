@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { useApplication } from '../context/ApplicationContext';
 import { DashboardLayout } from '../components/common/DashboardLayout';
 import { StatusBadge } from '../components/common/StatusBadge';
@@ -14,11 +15,19 @@ import {
   Gavel,
   CheckCircle2,
   PlusCircle,
+  Clock,
 } from 'lucide-react';
 
 export const ApprovalTrackerSLAPage: React.FC = () => {
   const { activeSubmission } = useApplication();
-  const appNumber = activeSubmission?.applicationNumber || 'MH-IND-2026-89421';
+  const hasSubmission = Boolean(activeSubmission);
+  const appNumber = activeSubmission?.applicationNumber || '';
+
+  const submittedDate = activeSubmission?.submittedAt ? new Date(activeSubmission.submittedAt) : new Date();
+  const daysElapsed = hasSubmission
+    ? Math.min(45, Math.max(0, Math.floor((Date.now() - submittedDate.getTime()) / (1000 * 60 * 60 * 24))))
+    : 0;
+  const daysRemaining = Math.max(0, 45 - daysElapsed);
 
   // Statutory Appeals State (Phase 7 RTS 2015)
   const [appeals, setAppeals] = useState<AppealItem[]>([]);
@@ -32,7 +41,7 @@ export const ApprovalTrackerSLAPage: React.FC = () => {
 
   const loadAppeals = async () => {
     try {
-      const data = await appealService.getAppeals();
+      const data = await appealService.getAppeals(activeSubmission?.id);
       setAppeals(data);
     } catch (err) {
       console.error('Failed to load appeals:', err);
@@ -40,8 +49,10 @@ export const ApprovalTrackerSLAPage: React.FC = () => {
   };
 
   useEffect(() => {
-    loadAppeals();
-  }, []);
+    if (activeSubmission) {
+      loadAppeals();
+    }
+  }, [activeSubmission]);
 
   const handleFileAppeal = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -49,10 +60,14 @@ export const ApprovalTrackerSLAPage: React.FC = () => {
       alert('Please enter statutory appeal grounds and detailed justification.');
       return;
     }
+    if (!activeSubmission) {
+      alert('An active submitted application is required to file a statutory appeal.');
+      return;
+    }
     setIsSubmittingAppeal(true);
     try {
       const created = await appealService.fileAppeal({
-        applicationId: activeSubmission?.id || 'app-sample-01',
+        applicationId: activeSubmission.id,
         departmentCode,
         appellateAuthority,
         groundForAppeal,
@@ -70,51 +85,83 @@ export const ApprovalTrackerSLAPage: React.FC = () => {
     }
   };
 
-
   const timelineSteps = [
     {
       title: '1. Application Submitted & Token Generated',
-      description: 'Consolidated filing received. Acknowledgement token issued and distributed to 5 participating departments.',
-      date: '20-Sep-2026 11:32 AM',
+      description: 'Consolidated filing received. Acknowledgement token issued and distributed to statutory participating departments.',
+      date: submittedDate.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }),
       status: 'COMPLETED',
-      slaNote: 'Day 0 of 45 statutory days',
+      slaNote: `Day ${daysElapsed} of 45 statutory days`,
     },
     {
-      title: '2. Document Pre-Scrutiny & AI Verification',
-      description: 'Factory layout blueprints, ETP drawings, and land title deeds verified for completeness.',
-      date: '21-Sep-2026 04:15 PM',
+      title: '2. Document Pre-Scrutiny & Automated Verification',
+      description: 'Uploaded layout blueprints, statutory affidavits, and credentials validated for completeness.',
+      date: 'Completed automatically',
       status: 'COMPLETED',
-      slaNote: 'Completed in 24 hours',
+      slaNote: 'Completed in < 24 hours',
     },
     {
       title: '3. Parallel Department Scrutiny',
-      description: 'MPCB & MIDC have completed technical scrutiny and granted approval. DISH & CEI scrutinies are active.',
-      date: 'Active • Day 6 of Scrutiny',
-      status: 'IN_PROGRESS',
-      slaNote: '39 days remaining on RTS clock',
+      description: 'Designated department authorities conduct technical scrutiny concurrently under Maharashtra RTS Act.',
+      date: 'Active Scrutiny',
+      status: (activeSubmission?.status === 'APPROVED' ? 'COMPLETED' : 'IN_PROGRESS'),
+      slaNote: `${daysRemaining} days remaining on RTS clock`,
     },
     {
       title: '4. Clarification Query Resolution',
-      description: 'Maharashtra Fire Services deficiency query resolved by applicant. Awaiting officer sign-off.',
-      date: '25-Sep-2026 02:40 PM',
+      description: 'Departmental deficiency queries, if any, resolved with applicant under statutory stop-clock provisions.',
+      date: 'As applicable',
       status: 'IN_PROGRESS',
-      slaNote: 'Query stop-clock resolved in 24 hours',
+      slaNote: 'Stop-clock active only during applicant response window',
     },
     {
       title: '5. Joint Common Inspection',
-      description: 'Synchronized multi-agency site visit scheduled with DISH Safety Inspector, MPCB Field Officer, and Fire Officer.',
-      date: 'Scheduled: 04-Oct-2026 (10:30 AM)',
+      description: 'Synchronized multi-agency site visit scheduled with designated safety, environmental, and municipal inspectors.',
+      date: 'Scheduled post-scrutiny',
       status: 'PENDING',
-      slaNote: 'Inspection within SLA window',
+      slaNote: 'Conducted within statutory SLA window',
     },
     {
       title: '6. Final Approval & Digitally Signed License',
-      description: 'Consolidated issuance of MPCB CTE, DISH Plan Approval, Provisional Fire NOC, and MIDC Water Sanction.',
-      date: 'Target Clearance: 15-Oct-2026',
-      status: 'PENDING',
-      slaNote: 'Before statutory day 45 deadline',
+      description: 'Consolidated statutory certificate issuance across all participating departmental desks.',
+      date: `Statutory Target: ${new Date(submittedDate.getTime() + 45 * 24 * 60 * 60 * 1000).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}`,
+      status: (activeSubmission?.status === 'APPROVED' ? 'COMPLETED' : 'PENDING'),
+      slaNote: 'Guaranteed under RTS Act 2015 (Day 45 deadline)',
     },
   ];
+
+  if (!hasSubmission) {
+    return (
+      <DashboardLayout
+        title="Statutory Approval Tracker & SLA"
+        subtitle="Guaranteed public service delivery monitoring under Maharashtra Right to Public Services Act 2015"
+        breadcrumbs={[
+          { label: 'Citizen Dashboard', href: '/dashboard' },
+          { label: 'Approval Tracker & SLA' },
+        ]}
+      >
+        <div className="bg-white rounded-2xl border border-gray-200 p-8 sm:p-12 text-center max-w-xl mx-auto shadow-xs">
+          <div className="w-14 h-14 rounded-2xl bg-blue-50 text-blue-700 flex items-center justify-center mx-auto mb-4">
+            <Clock className="w-7 h-7" />
+          </div>
+          <h3 className="text-base font-extrabold text-gray-900">
+            No Active Application Under SLA Tracking
+          </h3>
+          <p className="text-xs text-gray-500 mt-2 leading-relaxed">
+            Statutory 45-day RTS timers, multi-department scrutiny steps, and appellate escalations become active once your consolidated application is submitted.
+          </p>
+          <div className="mt-6 flex justify-center gap-3">
+            <Link
+              to="/business-profile"
+              className="px-5 py-2.5 bg-blue-900 hover:bg-blue-800 text-white font-bold rounded-xl text-xs transition shadow-sm"
+            >
+              Start New Application
+            </Link>
+          </div>
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout
@@ -156,7 +203,7 @@ export const ApprovalTrackerSLAPage: React.FC = () => {
               RTS Statutory Countdown
             </div>
             <div className="text-3xl sm:text-4xl font-black text-emerald-400 font-mono mt-1">
-              39 Days
+              {daysRemaining} Days
             </div>
             <div className="text-[11px] text-gray-400 mt-1">
               Remaining of 45-day statutory guarantee
@@ -166,7 +213,7 @@ export const ApprovalTrackerSLAPage: React.FC = () => {
 
         {/* Live SLA Progress Bar */}
         <div className="mt-8 pt-6 border-t border-blue-900/60">
-          <SLAProgress maxDays={45} daysRemaining={39} />
+          <SLAProgress maxDays={45} daysRemaining={daysRemaining} />
         </div>
       </div>
 

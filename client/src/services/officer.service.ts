@@ -1,6 +1,5 @@
 import { OfficerApplication, DepartmentQuery } from '../types';
 import { request } from './api';
-import { INITIAL_OFFICER_APPLICATIONS, INITIAL_QUERIES } from '../mock/mockData';
 
 export const officerService = {
   /**
@@ -8,13 +7,14 @@ export const officerService = {
    */
   async getApplications(): Promise<OfficerApplication[]> {
     try {
-      return await request<OfficerApplication[]>('/officer/applications');
+      const res = await request<any>('/officer/applications');
+      return Array.isArray(res) ? res : (res?.data || []);
     } catch {
       const stored = localStorage.getItem('maha_officer_apps');
       if (stored) {
         return JSON.parse(stored);
       }
-      return INITIAL_OFFICER_APPLICATIONS;
+      return [];
     }
   },
 
@@ -23,14 +23,16 @@ export const officerService = {
    */
   async getQueries(applicationId?: string): Promise<DepartmentQuery[]> {
     try {
-      return await request<DepartmentQuery[]>(`/officer/queries${applicationId ? `?appId=${applicationId}` : ''}`);
+      const res = await request<any>(`/officer/queries${applicationId ? `?appId=${applicationId}` : ''}`);
+      const list = Array.isArray(res) ? res : (res?.data || []);
+      return applicationId ? list.filter((q: any) => q.applicationId === applicationId) : list;
     } catch {
       const stored = localStorage.getItem('maha_queries');
       if (stored) {
         const list: DepartmentQuery[] = JSON.parse(stored);
         return applicationId ? list.filter(q => q.applicationId === applicationId) : list;
       }
-      return INITIAL_QUERIES;
+      return [];
     }
   },
 

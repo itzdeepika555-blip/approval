@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { useApplication } from '../context/ApplicationContext';
 import { approvalService } from '../services/approval.service';
 import { officerService } from '../services/officer.service';
@@ -13,6 +14,7 @@ import {
   UploadCloud,
   FileText,
   User,
+  Inbox,
 } from 'lucide-react';
 
 export const ParallelDepartmentPage: React.FC = () => {
@@ -23,18 +25,20 @@ export const ParallelDepartmentPage: React.FC = () => {
   const [isSubmittingReply, setIsSubmittingReply] = useState(false);
   const [replySuccessToast, setReplySuccessToast] = useState<string | null>(null);
 
-  const appNumber = activeSubmission?.applicationNumber || 'MH-IND-2026-89421';
+  const hasSubmission = Boolean(activeSubmission);
+  const appNumber = activeSubmission?.applicationNumber || '';
 
   const loadData = async () => {
+    if (!activeSubmission) return;
     const cl = await approvalService.getDepartmentClearances();
     setClearances(cl);
-    const qr = await officerService.getQueries(appNumber);
+    const qr = await officerService.getQueries(activeSubmission.id);
     setQueries(qr);
   };
 
   useEffect(() => {
     loadData();
-  }, []);
+  }, [activeSubmission]);
 
   const handleResolveQuery = async (queryId: string) => {
     if (!replyText.trim()) return;
@@ -52,6 +56,39 @@ export const ParallelDepartmentPage: React.FC = () => {
       setIsSubmittingReply(false);
     }
   };
+
+  if (!hasSubmission) {
+    return (
+      <DashboardLayout
+        title="Parallel Department Processing"
+        subtitle="Synchronous multi-agency clearance orchestrator under Maharashtra Single Window 2.0"
+        breadcrumbs={[
+          { label: 'Citizen Dashboard', href: '/dashboard' },
+          { label: 'Parallel Processing' },
+        ]}
+      >
+        <div className="bg-white rounded-2xl border border-gray-200 p-8 sm:p-12 text-center max-w-xl mx-auto shadow-xs">
+          <div className="w-14 h-14 rounded-2xl bg-blue-50 text-blue-700 flex items-center justify-center mx-auto mb-4">
+            <Inbox className="w-7 h-7" />
+          </div>
+          <h3 className="text-base font-extrabold text-gray-900">
+            No Active Application Under Scrutiny
+          </h3>
+          <p className="text-xs text-gray-500 mt-2 leading-relaxed">
+            Multi-department parallel processing, joint queries, and clearance certificates activate once your consolidated application is submitted.
+          </p>
+          <div className="mt-6 flex justify-center gap-3">
+            <Link
+              to="/business-profile"
+              className="px-5 py-2.5 bg-blue-900 hover:bg-blue-800 text-white font-bold rounded-xl text-xs transition shadow-sm"
+            >
+              Start New Application
+            </Link>
+          </div>
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout

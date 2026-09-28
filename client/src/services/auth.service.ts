@@ -1,6 +1,5 @@
 import { User } from '../types';
 import { request } from './api';
-import { DEMO_USERS } from '../mock/mockData';
 
 export interface LoginCredentials {
   email: string;
@@ -24,67 +23,53 @@ export interface AuthResponse {
 
 export const authService = {
   /**
-   * Authenticate user with backend or demo credentials
+   * Authenticate user with real PostgreSQL backend
    */
   async login(credentials: LoginCredentials): Promise<AuthResponse> {
-    try {
-      // Try backend endpoint first
-      return await request<AuthResponse>('/auth/login', {
-        method: 'POST',
-        body: JSON.stringify(credentials),
-      });
-    } catch {
-      // Clean fallback to mock credentials for Phase 2 UI development
-      const demoKey = credentials.email.toLowerCase().includes('officer')
-        ? 'officer'
-        : credentials.email.toLowerCase().includes('admin')
-        ? 'admin'
-        : 'citizen';
+    const response = await request<AuthResponse>('/auth/login', {
+      method: 'POST',
+      body: JSON.stringify(credentials),
+    });
 
-      const demo = DEMO_USERS[demoKey];
-      return {
-        token: demo.token,
-        user: {
-          ...demo.user,
-          email: credentials.email || demo.user.email,
-        },
-      };
+    if (response?.token) {
+      localStorage.setItem('maha_auth_token', response.token);
+      localStorage.setItem('maha_auth_user', JSON.stringify(response.user));
     }
+
+    return response;
   },
 
   /**
-   * Register new Citizen industrial account
+   * Register new Citizen industrial account in PostgreSQL
    */
   async signup(data: SignupData): Promise<AuthResponse> {
-    try {
-      return await request<AuthResponse>('/auth/register', {
-        method: 'POST',
-        body: JSON.stringify(data),
-      });
-    } catch {
-      // Fallback mock registration response
-      const newUser: User = {
-        id: `usr-cit-${Date.now()}`,
-        email: data.email,
-        fullName: data.fullName,
-        phone: data.phone,
-        role: 'CITIZEN',
-        designation: `Founder, ${data.companyName}`,
-      };
-      const token = `jwt-mock-${Date.now()}`;
-      return { token, user: newUser };
+    const response = await request<AuthResponse>('/auth/register', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+
+    if (response?.token) {
+      localStorage.setItem('maha_auth_token', response.token);
+      localStorage.setItem('maha_auth_user', JSON.stringify(response.user));
     }
+
+    return response;
   },
 
   /**
-   * Get current authenticated session
+   * Get current authenticated session from PostgreSQL
    */
   async getCurrentUser(): Promise<User | null> {
     try {
-      return await request<User>('/auth/me');
+      const user = await request<User>('/auth/me');
+      if (user) {
+        localStorage.setItem('maha_auth_user', JSON.stringify(user));
+        return user;
+      }
     } catch {
-      const stored = localStorage.getItem('maha_auth_user');
-      return stored ? JSON.parse(stored) : null;
+      // Token may be expired or invalid
     }
+    const stored = localStorage.getItem('maha_auth_user');
+    return stored ? JSON.parse(stored) : null;
   },
 };

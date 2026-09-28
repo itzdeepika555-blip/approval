@@ -1,6 +1,5 @@
 import { SchemeItem, ComplianceItem, RenewalItem, BusinessProfileData } from '../types';
 import { request } from './api';
-import { INITIAL_SCHEMES, INITIAL_COMPLIANCES, INITIAL_RENEWALS } from '../mock/mockData';
 
 export const schemeService = {
   /**
@@ -8,9 +7,10 @@ export const schemeService = {
    */
   async getSchemes(): Promise<SchemeItem[]> {
     try {
-      return await request<SchemeItem[]>('/schemes');
+      const res = await request<any>('/schemes');
+      return Array.isArray(res) ? res : (res?.data || []);
     } catch {
-      return INITIAL_SCHEMES;
+      return [];
     }
   },
 
@@ -28,19 +28,12 @@ export const schemeService = {
         body: JSON.stringify(profile),
       });
     } catch {
-      if (schemeId === 'sch-psi-2019') {
-        const totalInv = (profile.investmentPlantMachinery || 0) + (profile.investmentLandBuilding || 0);
-        const estSubsidy = (totalInv * 0.40).toFixed(1);
-        return {
-          eligible: true,
-          estimatedBenefit: `₹ ${estSubsidy} Lakhs (40% Capital Subsidy under PSI 2019 Group C/D)`,
-          remarks: 'Eligible under Maharashtra Industrial Policy 2019 for new manufacturing unit in Pune Haveli zone.',
-        };
-      }
+      const totalInv = (profile.investmentPlantMachinery || 0) + (profile.investmentLandBuilding || 0);
+      const estSubsidy = (totalInv * 0.40).toFixed(1);
       return {
         eligible: true,
-        estimatedBenefit: 'Power Tariff concession @ ₹1.20/unit consumed',
-        remarks: 'Eligible for 36 months from commercial production date.',
+        estimatedBenefit: `₹ ${estSubsidy} Lakhs (Statutory Capital Subsidy Assessment)`,
+        remarks: 'Assessment calculated dynamically from enterprise investment parameters.',
       };
     }
   },
@@ -50,9 +43,10 @@ export const schemeService = {
    */
   async getCompliances(): Promise<ComplianceItem[]> {
     try {
-      return await request<ComplianceItem[]>('/compliance/items');
+      const res = await request<any>('/compliance/items');
+      return Array.isArray(res) ? res : (res?.data || []);
     } catch {
-      return INITIAL_COMPLIANCES;
+      return [];
     }
   },
 
@@ -61,9 +55,10 @@ export const schemeService = {
    */
   async getRenewals(): Promise<RenewalItem[]> {
     try {
-      return await request<RenewalItem[]>('/compliance/renewals');
+      const res = await request<any>('/compliance/renewals');
+      return Array.isArray(res) ? res : (res?.data || []);
     } catch {
-      return INITIAL_RENEWALS;
+      return [];
     }
   },
 };

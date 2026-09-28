@@ -49,9 +49,12 @@ export async function request<T>(
       );
     }
 
-    return (await response.json()) as T;
+    const json = await response.json().catch(() => ({}));
+    if (json && typeof json === 'object' && json.success === true && json.data !== undefined) {
+      return json.data as T;
+    }
+    return json as T;
   } catch (err: any) {
-    // If backend is not running, log in development and propagate clean ApiError
     if (err instanceof ApiError) {
       throw err;
     }

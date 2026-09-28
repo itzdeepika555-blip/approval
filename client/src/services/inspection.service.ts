@@ -1,6 +1,5 @@
 import { InspectionSlot } from '../types';
 import { request } from './api';
-import { INITIAL_INSPECTION_SLOTS } from '../mock/mockData';
 
 export const inspectionService = {
   /**
@@ -8,13 +7,14 @@ export const inspectionService = {
    */
   async getInspectionSlots(): Promise<InspectionSlot[]> {
     try {
-      return await request<InspectionSlot[]>('/inspections/slots');
+      const res = await request<any>('/inspections/slots');
+      return Array.isArray(res) ? res : (res?.data || []);
     } catch {
       const stored = localStorage.getItem('maha_inspection_slots');
       if (stored) {
         return JSON.parse(stored);
       }
-      return INITIAL_INSPECTION_SLOTS;
+      return [];
     }
   },
 

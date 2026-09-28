@@ -193,26 +193,13 @@ export class AppealService {
           },
           orderBy: { createdAt: 'desc' },
         });
-        if (dbAppeals.length > 0) {
-          return dbAppeals.map(a => this.mapPrismaToViewItem(a));
-        }
+        return dbAppeals.map(a => this.mapPrismaToViewItem(a));
       } catch (err) {
-        console.warn('[AppealService.getAppeals] PostgreSQL query error, falling back to memory store:', err);
+        console.warn('[AppealService.getAppeals] PostgreSQL query error:', err);
       }
     }
 
-    let list = [...db.appeals];
-
-    if (requestingUser && requestingUser.role === 'CITIZEN') {
-      // Citizen only views their own appeals
-      list = list.filter(a => a.citizenId === requestingUser.userId);
-    }
-
-    if (applicationId) {
-      list = list.filter(a => a.applicationId === applicationId);
-    }
-
-    return list.map(a => this.mapToViewItem(a));
+    return [];
   }
 
   /**

@@ -224,6 +224,8 @@ export interface ApplicationSubmission {
   approvals: ApplicableApproval[];
   documents: DocumentItem[];
   overallStatus: 'SUBMITTED' | 'UNDER_REVIEW' | 'QUERY_RAISED' | 'APPROVED' | 'REJECTED';
+  status?: 'SUBMITTED' | 'UNDER_REVIEW' | 'QUERY_RAISED' | 'APPROVED' | 'REJECTED' | string;
+  totalFee?: number;
   rtsMaxDays: number;
   rtsDaysElapsed: number;
   rtsDaysRemaining: number;

@@ -157,7 +157,7 @@ export const SignupPage: React.FC = () => {
                     <input
                       id="fullName"
                       type="text"
-                      placeholder="e.g. Rajesh Patil"
+                      placeholder="e.g. Authorized Signatory"
                       value={formData.fullName}
                       onChange={e => setFormData({ ...formData, fullName: e.target.value })}
                       className={`w-full pl-9 pr-3 py-2 text-xs rounded-xl border bg-gray-50 focus:bg-white focus:outline-none transition ${
@@ -177,7 +177,7 @@ export const SignupPage: React.FC = () => {
                     <input
                       id="companyName"
                       type="text"
-                      placeholder="e.g. Omkara Precision Pvt Ltd"
+                      placeholder="e.g. Maharashtra Precision Pvt Ltd"
                       value={formData.companyName}
                       onChange={e => setFormData({ ...formData, companyName: e.target.value })}
                       className={`w-full pl-9 pr-3 py-2 text-xs rounded-xl border bg-gray-50 focus:bg-white focus:outline-none transition ${
@@ -200,7 +200,7 @@ export const SignupPage: React.FC = () => {
                     <input
                       id="email"
                       type="email"
-                      placeholder="rajesh@enterprise.com"
+                      placeholder="name@enterprise.com"
                       value={formData.email}
                       onChange={e => setFormData({ ...formData, email: e.target.value })}
                       className={`w-full pl-9 pr-3 py-2 text-xs rounded-xl border bg-gray-50 focus:bg-white focus:outline-none transition ${

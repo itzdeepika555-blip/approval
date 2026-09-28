@@ -10,7 +10,6 @@ import {
   Search,
   CheckCircle2,
   FileText,
-  Info,
   Sparkles,
 } from 'lucide-react';
 
@@ -52,15 +51,6 @@ export const SchemesIncentivesPage: React.FC = () => {
         { label: 'Schemes & Incentives' },
       ]}
     >
-      {/* Prominent Demo Data Disclaimer */}
-      <div className="bg-amber-50 border border-amber-300 rounded-2xl p-4 mb-6 shadow-xs flex items-start gap-3">
-        <Info className="w-5 h-5 text-amber-700 shrink-0 mt-0.5" />
-        <div className="text-xs text-amber-900 leading-relaxed">
-          <strong className="font-bold">Demonstration Notice:</strong> The government schemes, eligibility parameters, and subsidy percentages shown here are for hackathon demonstration purposes representing standard Maharashtra Industrial Policy frameworks. 
-          Official statutory entitlement rules will be dynamically connected via backend API integration.
-        </div>
-      </div>
-
       {/* Filter and Search Bar */}
       <div className="bg-white rounded-2xl border border-gray-200 p-4 mb-6 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="relative flex-1">

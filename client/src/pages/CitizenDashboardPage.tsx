@@ -17,14 +17,19 @@ import {
   FileText,
   Award,
   ChevronRight,
+  Inbox,
 } from 'lucide-react';
 
 export const CitizenDashboardPage: React.FC = () => {
   const { user } = useAuth();
-  const { profile, activeSubmission } = useApplication();
+  const { profile, activeSubmission, approvals } = useApplication();
   const navigate = useNavigate();
 
-  const appNumber = activeSubmission?.applicationNumber || 'MH-IND-2026-89421';
+  const hasSubmission = Boolean(activeSubmission);
+  const appNumber = activeSubmission?.applicationNumber || '';
+
+  const approvedCount = approvals.filter(a => (a as any).status === 'APPROVED').length;
+  const totalApprovalsCount = approvals.length;
 
   return (
     <DashboardLayout
@@ -37,7 +42,7 @@ export const CitizenDashboardPage: React.FC = () => {
           className="px-5 py-2.5 bg-amber-500 hover:bg-amber-600 text-slate-950 font-extrabold rounded-xl shadow-md transition flex items-center gap-2 text-xs uppercase tracking-wide transform hover:-translate-y-0.5"
         >
           <PlusCircle className="w-4 h-4" />
-          <span>Start New Application</span>
+          <span>{hasSubmission ? 'Update Profile' : 'Start New Application'}</span>
         </button>
       }
     >
@@ -49,17 +54,19 @@ export const CitizenDashboardPage: React.FC = () => {
             <span>Statutory Onboarding Sequence</span>
           </div>
           <h2 className="text-base sm:text-lg font-bold text-white">
-            Ready to establish or expand an industrial unit in Maharashtra?
+            {hasSubmission ? 'Active Industrial Project Under Scrutiny' : 'Ready to establish or expand an industrial unit in Maharashtra?'}
           </h2>
           <p className="text-xs text-blue-200 mt-0.5 max-w-2xl">
-            Click <strong>Start New Application</strong> to complete your Business Profile. The Smart Rule Assessment engine will automatically determine your applicable approvals, statutory fees, and documents.
+            {hasSubmission
+              ? 'Your consolidated application is filed and actively tracked under Maharashtra Right to Public Services Act 2015.'
+              : 'Complete your Business Profile to activate the Smart Rule Assessment engine and generate statutory clearance requirements.'}
           </p>
         </div>
         <button
-          onClick={() => navigate('/business-profile')}
+          onClick={() => navigate(hasSubmission ? '/application/tracking' : '/business-profile')}
           className="shrink-0 px-4 py-2 bg-white text-blue-950 hover:bg-blue-50 font-bold rounded-xl text-xs transition shadow-sm flex items-center gap-1.5"
         >
-          <span>Fill Business Profile</span>
+          <span>{hasSubmission ? 'Track Approvals' : 'Fill Business Profile'}</span>
           <ChevronRight className="w-4 h-4" />
         </button>
       </div>
@@ -73,10 +80,15 @@ export const CitizenDashboardPage: React.FC = () => {
               <FileText className="w-4 h-4" />
             </div>
           </div>
-          <div className="text-2xl font-extrabold text-gray-900">01</div>
+          <div className="text-2xl font-extrabold text-gray-900">
+            {hasSubmission ? '01' : '00'}
+          </div>
           <div className="text-[11px] text-gray-500 mt-1 flex items-center gap-1">
-            <span className="font-semibold text-blue-700">{appNumber}</span>
-            <span>(Consolidated)</span>
+            {hasSubmission ? (
+              <span className="font-semibold text-blue-700">{appNumber}</span>
+            ) : (
+              <span>No active submissions</span>
+            )}
           </div>
         </div>
 
@@ -87,9 +99,11 @@ export const CitizenDashboardPage: React.FC = () => {
               <ShieldCheck className="w-4 h-4" />
             </div>
           </div>
-          <div className="text-2xl font-extrabold text-emerald-700">02 / 06</div>
+          <div className="text-2xl font-extrabold text-emerald-700">
+            {hasSubmission ? `${approvedCount} / ${totalApprovalsCount}` : '00'}
+          </div>
           <div className="text-[11px] text-emerald-600 mt-1 font-medium">
-            MPCB CTE & MIDC Water Granted
+            {hasSubmission && totalApprovalsCount > 0 ? `${approvedCount} Statutory Clearances Issued` : 'Awaiting Filing'}
           </div>
         </div>
 
@@ -100,9 +114,11 @@ export const CitizenDashboardPage: React.FC = () => {
               <AlertTriangle className="w-4 h-4" />
             </div>
           </div>
-          <div className="text-2xl font-extrabold text-amber-600">01 Query</div>
+          <div className="text-2xl font-extrabold text-amber-600">
+            {hasSubmission ? '00' : '00'}
+          </div>
           <div className="text-[11px] text-gray-500 mt-1">
-            Fire Dept query awaiting clarification
+            {hasSubmission ? 'No pending queries' : 'No queries raised'}
           </div>
         </div>
 
@@ -113,127 +129,138 @@ export const CitizenDashboardPage: React.FC = () => {
               <CalendarDays className="w-4 h-4" />
             </div>
           </div>
-          <div className="text-2xl font-extrabold text-indigo-900">04 Oct</div>
+          <div className="text-2xl font-extrabold text-indigo-900">
+            {hasSubmission ? 'Desk Queue' : 'N/A'}
+          </div>
           <div className="text-[11px] text-gray-500 mt-1">
-            MPCB + DISH + Fire joint visit
+            {hasSubmission ? 'Subject to scrutiny schedule' : 'Available post-submission'}
           </div>
         </div>
       </div>
 
       {/* Main Grid: Active Application Details & Live SLA */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
-        {/* Active Application Card */}
+        {/* Active Application Card or Empty State */}
         <div className="lg:col-span-2 bg-white rounded-2xl border border-gray-200 shadow-xs overflow-hidden">
-          <div className="p-6 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-gray-50/60">
+          {hasSubmission ? (
             <div>
-              <div className="flex items-center gap-2">
-                <span className="font-mono text-xs font-bold text-blue-900 bg-blue-100 px-2.5 py-0.5 rounded-md">
-                  {appNumber}
-                </span>
-                <StatusBadge status="UNDER_REVIEW" />
-              </div>
-              <h3 className="text-base font-extrabold text-gray-900 mt-2">
-                {profile.businessName}
-              </h3>
-              <p className="text-xs text-gray-500">
-                {profile.surveyPlotNumber}, {profile.midcEstateName || profile.district}
-              </p>
-            </div>
-            <Link
-              to="/application/tracking"
-              className="px-3.5 py-2 bg-blue-50 text-blue-800 hover:bg-blue-100 rounded-xl text-xs font-bold transition flex items-center gap-1.5 self-start sm:self-auto"
-            >
-              <span>Track Departments</span>
-              <ArrowRight className="w-3.5 h-3.5" />
-            </Link>
-          </div>
-
-          <div className="p-6 space-y-6">
-            {/* Live Statutory SLA progress bar */}
-            <div>
-              <div className="text-xs font-bold text-gray-700 mb-2 uppercase tracking-wider flex items-center justify-between">
-                <span>RTS Act Statutory SLA Guarantee</span>
-                <Link to="/sla-tracker" className="text-blue-700 text-xs font-semibold hover:underline">
-                  View SLA Countdown →
+              <div className="p-6 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-gray-50/60">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="font-mono text-xs font-bold text-blue-900 bg-blue-100 px-2.5 py-0.5 rounded-md">
+                      {appNumber}
+                    </span>
+                    <StatusBadge status={activeSubmission?.status || 'UNDER_REVIEW'} />
+                  </div>
+                  <h3 className="text-base font-extrabold text-gray-900 mt-2">
+                    {profile.businessName || 'Industrial Unit'}
+                  </h3>
+                  <p className="text-xs text-gray-500">
+                    {profile.surveyPlotNumber ? `${profile.surveyPlotNumber}, ` : ''}{profile.midcEstateName || profile.district || 'Maharashtra'}
+                  </p>
+                </div>
+                <Link
+                  to="/application/tracking"
+                  className="px-3.5 py-2 bg-blue-50 text-blue-800 hover:bg-blue-100 rounded-xl text-xs font-bold transition flex items-center gap-1.5 self-start sm:self-auto"
+                >
+                  <span>Track Departments</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
                 </Link>
               </div>
-              <SLAProgress maxDays={45} daysRemaining={39} />
-            </div>
 
-            {/* Quick Stats Grid */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 p-4 rounded-xl bg-slate-50 border border-slate-200 text-xs">
-              <div>
-                <span className="text-gray-400 block text-[10px] font-semibold uppercase">Category</span>
-                <span className="font-bold text-amber-700">{profile.pollutionCategory} Category</span>
-              </div>
-              <div>
-                <span className="text-gray-400 block text-[10px] font-semibold uppercase">Capital Investment</span>
-                <span className="font-bold text-gray-800">₹ {(profile.investmentPlantMachinery + profile.investmentLandBuilding) / 100} Cr</span>
-              </div>
-              <div>
-                <span className="text-gray-400 block text-[10px] font-semibold uppercase">Power Requirement</span>
-                <span className="font-bold text-gray-800">{profile.powerRequirementKva} kVA</span>
-              </div>
-              <div>
-                <span className="text-gray-400 block text-[10px] font-semibold uppercase">Water Tap-off</span>
-                <span className="font-bold text-gray-800">{profile.waterUsageKld} KLD</span>
-              </div>
-            </div>
-
-            {/* Parallel Department Quick Statuses */}
-            <div>
-              <div className="text-xs font-bold text-gray-700 mb-3 uppercase tracking-wider">
-                Parallel Clearances In Progress (5 Departments)
-              </div>
-              <div className="space-y-2.5">
-                {[
-                  { dept: 'MPCB', title: 'Consent to Establish (CTE Orange)', status: 'APPROVED', days: 0 },
-                  { dept: 'DISH', title: 'Factory Building Plan Approval', status: 'UNDER_REVIEW', days: 12 },
-                  { dept: 'FIRE', title: 'Provisional Fire Safety NOC', status: 'QUERY_RAISED', days: 6 },
-                  { dept: 'MIDC', title: 'Industrial Water Tap-off Sanction', status: 'APPROVED', days: 0 },
-                  { dept: 'CEI', title: '250 kVA DG Set Installation Clearance', status: 'UNDER_REVIEW', days: 9 },
-                ].map((item, idx) => (
-                  <div
-                    key={idx}
-                    className="p-3 rounded-xl border border-gray-200 flex items-center justify-between hover:bg-gray-50 transition"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-lg bg-blue-50 text-blue-900 font-bold text-xs flex items-center justify-center shrink-0">
-                        {item.dept}
-                      </div>
-                      <div>
-                        <div className="text-xs font-bold text-gray-900">{item.title}</div>
-                        <div className="text-[10px] text-gray-500">Statutory review under Maharashtra RTS Act</div>
-                      </div>
-                    </div>
-                    <StatusBadge status={item.status} />
+              <div className="p-6 space-y-6">
+                {/* Statutory SLA progress bar */}
+                <div>
+                  <div className="text-xs font-bold text-gray-700 mb-2 uppercase tracking-wider flex items-center justify-between">
+                    <span>RTS Act Statutory SLA Guarantee</span>
+                    <Link to="/sla-tracker" className="text-blue-700 text-xs font-semibold hover:underline">
+                      View SLA Countdown →
+                    </Link>
                   </div>
-                ))}
+                  <SLAProgress maxDays={45} daysRemaining={40} />
+                </div>
+
+                {/* Quick Stats Grid */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 p-4 rounded-xl bg-slate-50 border border-slate-200 text-xs">
+                  <div>
+                    <span className="text-gray-400 block text-[10px] font-semibold uppercase">Category</span>
+                    <span className="font-bold text-amber-700">{profile.pollutionCategory || 'GREEN'} Category</span>
+                  </div>
+                  <div>
+                    <span className="text-gray-400 block text-[10px] font-semibold uppercase">Capital Investment</span>
+                    <span className="font-bold text-gray-800">₹ {((profile.investmentPlantMachinery || 0) + (profile.investmentLandBuilding || 0)) / 100} Cr</span>
+                  </div>
+                  <div>
+                    <span className="text-gray-400 block text-[10px] font-semibold uppercase">Power Requirement</span>
+                    <span className="font-bold text-gray-800">{profile.powerRequirementKva || 0} kVA</span>
+                  </div>
+                  <div>
+                    <span className="text-gray-400 block text-[10px] font-semibold uppercase">Water Tap-off</span>
+                    <span className="font-bold text-gray-800">{profile.waterUsageKld || 0} KLD</span>
+                  </div>
+                </div>
+
+                {/* Parallel Department Quick Statuses */}
+                {approvals.length > 0 && (
+                  <div>
+                    <div className="text-xs font-bold text-gray-700 mb-3 uppercase tracking-wider">
+                      Statutory Approvals Bundled ({approvals.length} Clearances)
+                    </div>
+                    <div className="space-y-2.5">
+                      {approvals.map((item, idx) => (
+                        <div
+                          key={idx}
+                          className="p-3 rounded-xl border border-gray-200 flex items-center justify-between hover:bg-gray-50 transition"
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-lg bg-blue-50 text-blue-900 font-bold text-xs flex items-center justify-center shrink-0">
+                              {item.departmentCode}
+                            </div>
+                            <div>
+                              <div className="text-xs font-bold text-gray-900">{item.name}</div>
+                              <div className="text-[10px] text-gray-500">Statutory review under Maharashtra RTS Act</div>
+                            </div>
+                          </div>
+                          <StatusBadge status={(item as any).status || 'UNDER_REVIEW'} />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
-          </div>
+          ) : (
+            <div className="p-8 sm:p-12 text-center">
+              <div className="w-14 h-14 rounded-2xl bg-blue-50 text-blue-700 flex items-center justify-center mx-auto mb-4">
+                <Inbox className="w-7 h-7" />
+              </div>
+              <h3 className="text-base font-extrabold text-gray-900">
+                No Active Consolidated Application
+              </h3>
+              <p className="text-xs text-gray-500 max-w-md mx-auto mt-2 leading-relaxed">
+                You have not filed any industrial applications yet. Click below to begin by entering your enterprise and manufacturing parameters.
+              </p>
+              <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
+                <button
+                  onClick={() => navigate('/business-profile')}
+                  className="px-5 py-2.5 bg-blue-900 hover:bg-blue-800 text-white font-bold rounded-xl text-xs transition shadow-sm flex items-center gap-2"
+                >
+                  <PlusCircle className="w-4 h-4 text-amber-400" />
+                  <span>Fill Business Profile</span>
+                </button>
+                <button
+                  onClick={() => navigate('/start-assessment')}
+                  className="px-5 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-800 font-bold rounded-xl text-xs transition"
+                >
+                  Run Smart Assessment
+                </button>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Right Column: Actions & Quick Modules */}
         <div className="space-y-6">
-          {/* Action Needed Card */}
-          <div className="bg-amber-50/60 rounded-2xl border border-amber-200 p-5">
-            <div className="flex items-center gap-2 text-amber-900 font-bold text-xs uppercase tracking-wider mb-2">
-              <AlertTriangle className="w-4 h-4 text-amber-600" />
-              <span>Department Query Pending</span>
-            </div>
-            <p className="text-xs text-amber-950 leading-relaxed mb-4">
-              Maharashtra Fire Services has requested revised sprinkler schematics for Raw Material Storage Bay B.
-            </p>
-            <Link
-              to="/application/tracking"
-              className="w-full py-2.5 px-3 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold rounded-xl text-xs flex items-center justify-center gap-1.5 transition shadow-xs"
-            >
-              <span>View & Resolve Query</span>
-              <ArrowRight className="w-3.5 h-3.5" />
-            </Link>
-          </div>
-
           {/* Quick Navigator Hub */}
           <div className="bg-white rounded-2xl border border-gray-200 p-5 shadow-xs">
             <h4 className="text-xs font-bold text-gray-800 uppercase tracking-wider mb-3">

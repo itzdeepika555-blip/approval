@@ -3,30 +3,84 @@ import { evaluateApprovalRules } from '../engine/rule-evaluator';
 
 export class ApprovalService {
   /**
-   * Retrieves all registered departments in Maharashtra
+   * Retrieves all registered departments in Maharashtra from PostgreSQL
    */
   public async getDepartments(): Promise<MasterDepartment[]> {
-    return db.departments;
+    const depts = await db.prisma.department.findMany({
+      where: { isActive: true },
+      orderBy: { code: 'asc' },
+    });
+
+    return depts.map(d => ({
+      id: d.id,
+      code: d.code,
+      name: d.name,
+      nameMarathi: d.nameMarathi || undefined,
+      description: d.description || undefined,
+      portalUrl: d.portalUrl || undefined,
+      nodalOfficerEmail: d.nodalOfficerEmail || undefined,
+      slaWorkingDays: d.slaWorkingDays,
+      isActive: d.isActive,
+    }));
   }
 
   /**
-   * Retrieves all master approvals
+   * Retrieves all master approvals from PostgreSQL
    */
   public async getAllApprovals(): Promise<MasterApproval[]> {
-    return db.approvals;
+    const apps = await db.prisma.approval.findMany({
+      where: { isActive: true },
+      include: { department: true },
+      orderBy: { approvalCode: 'asc' },
+    });
+
+    return apps.map(a => ({
+      id: a.id,
+      departmentId: a.departmentId,
+      departmentCode: a.department.code,
+      approvalCode: a.approvalCode,
+      name: a.name,
+      nameMarathi: a.nameMarathi || undefined,
+      stage: a.stage as any,
+      category: a.category,
+      description: a.description,
+      statutoryAct: a.statutoryAct,
+      statutoryTimelineDays: a.statutoryTimelineDays,
+      validityPeriodMonths: a.validityPeriodMonths || undefined,
+      renewalRequired: a.renewalRequired,
+      requiredDocCodes: a.requiredDocCodes,
+      feeStructureDetails: a.feeStructureDetails || undefined,
+      externalPortalLink: a.externalPortalLink || undefined,
+      isActive: a.isActive,
+    }));
   }
 
   /**
    * Evaluates statutory rules against profile parameters to determine applicable approvals
    */
   public async assessApprovals(profile: any) {
-    const rules = db.rules;
-    const ruleResults = evaluateApprovalRules(rules, profile);
+    const rules = await db.prisma.approvalRule.findMany({
+      where: { isActive: true },
+      include: { approval: true },
+    });
 
+    const masterRules = rules.map(r => ({
+      id: r.id,
+      approvalCode: r.approval.approvalCode,
+      ruleCode: r.ruleCode,
+      ruleName: r.ruleName,
+      priority: r.priority,
+      conditionsJson: r.conditionsJson,
+      explanationTpl: r.explanationTpl,
+    }));
+
+    const ruleResults = evaluateApprovalRules(masterRules, profile);
     const triggeredApprovalCodes = new Set(ruleResults.map(r => r.approvalCode));
 
+    const allApprovals = await this.getAllApprovals();
+
     // Map to approval master items
-    const applicableApprovals = db.approvals
+    const applicableApprovals = allApprovals
       .filter(app => triggeredApprovalCodes.has(app.approvalCode))
       .map(app => {
         const matchingRule = ruleResults.find(r => r.approvalCode === app.approvalCode);
@@ -37,11 +91,11 @@ export class ApprovalService {
         };
       });
 
-    // Also include default base clearances if none matched (e.g. fire / revenue / plan)
+    // Baseline if none matched
     if (applicableApprovals.length === 0) {
-      const defaultCodes = ['FIRE_PROVISIONAL_NOC', 'MIDC_BLDG_PLAN'];
+      const defaultCodes = profile?.isMidcArea ? ['MIDC_BLDG_PLAN', 'FIRE_PROVISIONAL_NOC'] : ['REVENUE_NA_PERM', 'FIRE_PROVISIONAL_NOC'];
       applicableApprovals.push(
-        ...db.approvals
+        ...allApprovals
           .filter(a => defaultCodes.includes(a.approvalCode))
           .map(a => ({
             ...a,
@@ -51,7 +105,6 @@ export class ApprovalService {
       );
     }
 
-    // Calculate critical path (maximum statutory SLA days among parallel approvals)
     const criticalPathDays = Math.max(...applicableApprovals.map(a => a.statutoryTimelineDays), 30);
     const departmentsInvolved = Array.from(new Set(applicableApprovals.map(a => a.departmentCode)));
 
@@ -64,81 +117,45 @@ export class ApprovalService {
   }
 
   /**
-   * Returns parallel department clearance statuses
+   * Returns parallel department clearance statuses based on real database records
    */
   public async getDepartmentClearances(userId?: string) {
-    // Return live tracking status from active application if available
-    const activeApp = db.applications.find(a => (userId ? a.userId === userId : true));
+    const whereApp: any = {};
+    if (userId) {
+      whereApp.userId = userId;
+    }
 
-    if (activeApp && activeApp.approvals.length > 0) {
-      return activeApp.approvals.map(app => {
-        const dept = db.departments.find(d => d.code === app.departmentCode);
+    const activeApp = await db.prisma.application.findFirst({
+      where: whereApp,
+      include: {
+        applicationApprovals: {
+          include: { approval: true, department: true },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    if (activeApp && activeApp.applicationApprovals.length > 0) {
+      return activeApp.applicationApprovals.map(app => {
+        const sla = app.approval?.statutoryTimelineDays || 30;
+        const appliedTime = app.appliedAt ? app.appliedAt.getTime() : activeApp.createdAt.getTime();
+        const daysElapsed = Math.max(0, Math.floor((Date.now() - appliedTime) / (1000 * 60 * 60 * 24)));
+
         return {
-          departmentCode: app.departmentCode,
-          departmentName: dept?.name || app.departmentCode,
-          approvalName: app.approvalName,
+          departmentCode: app.department.code,
+          departmentName: app.department.name,
+          approvalName: app.approval?.name || 'Statutory Approval',
           status: app.status,
-          slaDays: app.statutorySlaDays,
-          daysElapsed: Math.floor(Math.random() * (app.statutorySlaDays / 2)),
-          officerName: 'Dr. Rahul Deshmukh',
+          slaDays: sla,
+          daysElapsed,
+          officerName: 'Competent Scrutiny Authority',
           remarks: app.remarks || 'Application under departmental verification.',
         };
       });
     }
 
-    // Default departmental statuses for presentation
-    return [
-      {
-        departmentCode: 'MPCB',
-        departmentName: 'Maharashtra Pollution Control Board',
-        approvalName: 'Consent to Establish (CTE)',
-        status: 'QUERY_RAISED',
-        slaDays: 45,
-        daysElapsed: 14,
-        officerName: 'Dr. Rahul Deshmukh',
-        remarks: 'Clarification sought regarding ETP capacity.',
-      },
-      {
-        departmentCode: 'DISH',
-        departmentName: 'Directorate of Industrial Safety & Health',
-        approvalName: 'Factory Registration & License',
-        status: 'IN_PROGRESS',
-        slaDays: 30,
-        daysElapsed: 8,
-        officerName: 'Shri A. P. Kulkarni',
-        remarks: 'Structural stability certificate under scrutiny.',
-      },
-      {
-        departmentCode: 'FIRE',
-        departmentName: 'Maharashtra Fire Services',
-        approvalName: 'Provisional Fire Safety NOC',
-        status: 'APPROVED',
-        slaDays: 21,
-        daysElapsed: 12,
-        officerName: 'Chief Fire Officer',
-        remarks: 'Cleared architectural fire egress guidelines.',
-      },
-      {
-        departmentCode: 'MIDC',
-        departmentName: 'MIDC Industrial Authority',
-        approvalName: 'Building Plan Approval',
-        status: 'APPROVED',
-        slaDays: 30,
-        daysElapsed: 18,
-        officerName: 'Executive Engineer (Civil)',
-        remarks: 'Commencement Certificate issued.',
-      },
-      {
-        departmentCode: 'MSEDCL',
-        departmentName: 'MSEDCL (State Electricity)',
-        approvalName: 'High Tension (HT) Power Sanction',
-        status: 'IN_PROGRESS',
-        slaDays: 15,
-        daysElapsed: 6,
-        officerName: 'Superintending Engineer',
-        remarks: 'Substation feasibility report awaited.',
-      },
-    ];
+    // Return real empty list if no active application
+    return [];
   }
 }
 

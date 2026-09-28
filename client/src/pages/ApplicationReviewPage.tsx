@@ -126,7 +126,7 @@ export const ApplicationReviewPage: React.FC = () => {
               <div className="space-y-2">
                 <div className="flex justify-between py-1 border-b border-gray-100">
                   <span className="text-gray-500">Applicant:</span>
-                  <span className="font-bold text-gray-900">{user?.fullName || 'Rajesh Patil'}</span>
+                  <span className="font-bold text-gray-900">{user?.fullName || 'Applicant'}</span>
                 </div>
                 <div className="flex justify-between py-1 border-b border-gray-100">
                   <span className="text-gray-500">Enterprise Name:</span>
@@ -224,11 +224,11 @@ export const ApplicationReviewPage: React.FC = () => {
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 text-xs">
               <div>
                 <span className="text-gray-400 block text-[10px] font-semibold uppercase">Authorized Applicant</span>
-                <span className="font-bold text-gray-900">{user?.fullName || 'Rajesh Patil'}</span>
+                <span className="font-bold text-gray-900">{user?.fullName || 'Applicant'}</span>
               </div>
               <div>
                 <span className="text-gray-400 block text-[10px] font-semibold uppercase">Official Email</span>
-                <span className="font-bold text-gray-900">{user?.email || 'rajesh.patil@omkara-engg.com'}</span>
+                <span className="font-bold text-gray-900">{user?.email || 'N/A'}</span>
               </div>
               <div>
                 <span className="text-gray-400 block text-[10px] font-semibold uppercase">Enterprise Name</span>

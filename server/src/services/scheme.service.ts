@@ -66,11 +66,38 @@ export interface RenewalViewItem {
   renewalWindowOpen: boolean;
 }
 
+import { db } from './db.service';
+
 export class SchemeService {
   /**
-   * Retrieves comprehensive master list of Maharashtra government industrial schemes.
+   * Retrieves comprehensive master list of Maharashtra government industrial schemes from PostgreSQL
    */
   public async getSchemes(): Promise<SchemeViewItem[]> {
+    const dbSchemes = await db.prisma.scheme.findMany({
+      where: { isActive: true },
+      include: { department: true },
+    });
+
+    if (dbSchemes.length > 0) {
+      return dbSchemes.map(s => ({
+        id: s.id,
+        code: s.schemeCode,
+        name: s.schemeName,
+        department: s.department?.name || 'Directorate of Industries, Govt. of Maharashtra',
+        category: 'CAPITAL_SUBSIDY',
+        description: s.benefitsDescription,
+        maxBenefit: `Max benefit up to ₹ ${(Number(s.maxInvestment || 50000000) / 10000000).toFixed(1)} Cr`,
+        benefits: s.benefitsDescription,
+        subsidyPercentage: s.subsidyPercentage ? Number(s.subsidyPercentage) : 40,
+        eligibilitySummary: s.benefitsDescription,
+        eligibleSectors: s.eligibleSectors,
+        eligibleDistricts: s.eligibleDistricts,
+        requiredDocuments: ['Udyam Registration Certificate', 'Detailed Project Report (DPR)', 'PAN Card'],
+        status: 'ELIGIBLE',
+        officialPortalUrl: s.applicationUrl || 'https://mahaindustries.gov.in',
+        schemeDocumentUrl: s.applicationUrl || 'https://mahaindustries.gov.in',
+      }));
+    }
     return [
       {
         id: 'sch-psi-2019',

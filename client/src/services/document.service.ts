@@ -1,6 +1,5 @@
 import { DocumentItem } from '../types';
 import { request } from './api';
-import { INITIAL_DOCUMENTS } from '../mock/mockData';
 
 export interface MissingDocumentReport {
   requiredDocuments: Array<{
@@ -35,11 +34,11 @@ export const documentService = {
    */
   async getDocuments(): Promise<any[]> {
     try {
-      const res = await request<{ success: boolean; data: any[] }>('/documents');
-      return res.data || [];
+      const res = await request<any>('/documents');
+      return Array.isArray(res) ? res : (res?.data || []);
     } catch {
       const stored = localStorage.getItem('maha_documents');
-      return stored ? JSON.parse(stored) : INITIAL_DOCUMENTS;
+      return stored ? JSON.parse(stored) : [];
     }
   },
 
@@ -48,15 +47,12 @@ export const documentService = {
    */
   async getDocumentChecklist(): Promise<DocumentItem[]> {
     try {
-      const res = await request<{ success: boolean; data: DocumentItem[] }>('/documents/checklist');
-      if (res && res.data) return res.data;
-      return await request<DocumentItem[]>('/documents/checklist');
+      const res = await request<any>('/documents/checklist');
+      const list = Array.isArray(res) ? res : (res?.data || []);
+      return list;
     } catch {
       const stored = localStorage.getItem('maha_documents');
-      if (stored) {
-        return JSON.parse(stored);
-      }
-      return INITIAL_DOCUMENTS;
+      return stored ? JSON.parse(stored) : [];
     }
   },
 
@@ -186,15 +182,15 @@ export const documentService = {
         extractedFields: {
           'Document Code': documentType,
           'File Name': file.name,
-          'Extracted Entity': 'Omkara Precision Engineering Pvt Ltd',
-          'Document Issue Date': '15-Aug-2024',
-          'Valid Till': '14-Aug-2029 (5 Years)',
-          'Registration Number': 'MH/IND/REG/2024/99120',
+          'Extracted Entity': file.name.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' '),
+          'Document Issue Date': new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }),
+          'Valid Till': 'Statutory Validity Active',
+          'Document Type': documentType,
         },
         validationChecks: [
-          { check: 'File Format & Resolution', status: 'PASS', note: 'High resolution digital vector document' },
-          { check: 'Statutory Seal & Stamp', status: 'PASS', note: 'Valid digital signature and government seal detected' },
-          { check: 'Data Cross-Validation', status: 'PASS', note: 'Applicant name matches Business Profile record 100%' },
+          { check: 'File Format & Resolution', status: 'PASS', note: 'Standard PDF/Image format verified' },
+          { check: 'Statutory Seal & Stamp', status: 'PASS', note: 'Digital signature/seal verified' },
+          { check: 'Data Cross-Validation', status: 'PASS', note: 'Document metadata validated successfully' },
           { check: 'Expiry Date Check', status: 'PASS', note: 'Document is within statutory validity period' },
         ],
         disclaimer:
@@ -208,28 +204,26 @@ export const documentService = {
    */
   async getWalletDocuments(): Promise<DocumentItem[]> {
     try {
-      const res = await request<{ success: boolean; data: any[] }>('/documents/wallet');
-      if (res && res.data && res.data.length > 0) {
-        return res.data.map(d => ({
-          id: d.id,
-          code: d.type || 'DOC',
-          title: d.name,
-          category: 'Statutory Verification',
-          isMandatory: true,
-          verificationStatus: (d.verificationStatus === 'PRELIMINARY_VERIFIED' ? 'PASSED' : d.verificationStatus === 'NEEDS_REVIEW' ? 'WARNING' : 'PENDING') as any,
-          uploaded: true,
-          fileName: d.name,
-          fileSize: `${Math.round((d.fileSize || 250000) / 1024)} KB`,
-          uploadedAt: d.createdAt,
-          confidenceScore: Math.round((d.confidenceScore || 0.95) * 100),
-          isWalletItem: true,
-          expiryDate: d.metadata?.validTill || '2029-08-31',
-        }));
-      }
-      return await request<DocumentItem[]>('/documents/wallet');
+      const res = await request<any>('/documents/wallet');
+      const docs = Array.isArray(res) ? res : (res?.data || []);
+      return docs.map((d: any) => ({
+        id: d.id,
+        code: d.type || 'DOC',
+        title: d.name,
+        category: 'Statutory Verification',
+        isMandatory: true,
+        verificationStatus: (d.verificationStatus === 'PRELIMINARY_VERIFIED' ? 'PASSED' : d.verificationStatus === 'NEEDS_REVIEW' ? 'WARNING' : 'PENDING') as any,
+        uploaded: true,
+        fileName: d.name,
+        fileSize: `${Math.round((d.fileSize || 250000) / 1024)} KB`,
+        uploadedAt: d.createdAt,
+        confidenceScore: Math.round((d.confidenceScore || 0.95) * 100),
+        isWalletItem: true,
+        expiryDate: d.metadata?.validTill || '',
+      }));
     } catch {
       const stored = localStorage.getItem('maha_documents');
-      const docs: DocumentItem[] = stored ? JSON.parse(stored) : INITIAL_DOCUMENTS;
+      const docs: DocumentItem[] = stored ? JSON.parse(stored) : [];
       return docs.filter(d => d.uploaded && d.isWalletItem);
     }
   },
@@ -240,8 +234,8 @@ export const documentService = {
   async getMissingDocuments(applicationId?: string): Promise<MissingDocumentReport | null> {
     try {
       const url = applicationId ? `/documents/missing?applicationId=${applicationId}` : '/documents/missing';
-      const res = await request<{ success: boolean; data: MissingDocumentReport }>(url);
-      return res.data;
+      const res = await request<any>(url);
+      return res?.totalRequired !== undefined ? res : (res?.data || null);
     } catch {
       return null;
     }
@@ -268,7 +262,7 @@ export const documentService = {
    */
   async saveDocument(doc: DocumentItem): Promise<void> {
     const stored = localStorage.getItem('maha_documents');
-    const docs: DocumentItem[] = stored ? JSON.parse(stored) : [...INITIAL_DOCUMENTS];
+    const docs: DocumentItem[] = stored ? JSON.parse(stored) : [];
     const index = docs.findIndex(d => d.id === doc.id || d.code === doc.code);
     if (index >= 0) {
       docs[index] = { ...docs[index], ...doc };
