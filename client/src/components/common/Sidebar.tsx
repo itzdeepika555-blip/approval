@@ -3,18 +3,12 @@ import { NavLink } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import {
   LayoutDashboard,
-  Building2,
-  FileCheck2,
   ShieldCheck,
-  FolderLock,
   GitFork,
   ClockAlert,
   CalendarDays,
-  Sparkles,
-  RefreshCw,
   Award,
   ScanEye,
-  CheckSquare,
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -25,29 +19,6 @@ interface SidebarProps {
 export const Sidebar: React.FC<SidebarProps> = ({ collapsed = false }) => {
   const { user } = useAuth();
   const isOfficer = user?.role === 'OFFICER' || user?.role === 'ADMIN';
-
-  const citizenNav = [
-    { section: 'DASHBOARD' },
-    { name: 'Citizen Overview', to: '/dashboard', icon: LayoutDashboard },
-    { name: 'Business Profile', to: '/business-profile', icon: Building2 },
-
-    { section: 'APPLICATION ENGINE' },
-    { name: 'Smart Assessment', to: '/start-assessment', icon: Sparkles },
-    { name: 'Applicable Approvals', to: '/applicable-approvals', icon: CheckSquare },
-    { name: 'Required Documents', to: '/document-checklist', icon: FileCheck2 },
-    { name: 'AI Doc Verification', to: '/document-verification', icon: ScanEye },
-    { name: 'Verified Wallet', to: '/wallet', icon: FolderLock },
-    { name: 'Review & Submit', to: '/application/review', icon: ShieldCheck },
-
-    { section: 'PROCESSING & CLEARANCE' },
-    { name: 'Parallel Department Scrutiny', to: '/application/tracking', icon: GitFork },
-    { name: 'Approval Tracker & SLA', to: '/sla-tracker', icon: ClockAlert },
-    { name: 'Common Joint Inspection', to: '/inspections', icon: CalendarDays },
-
-    { section: 'GROWTH & COMPLIANCE' },
-    { name: 'Schemes & Subsidies', to: '/schemes', icon: Award },
-    { name: 'Compliance & Renewal', to: '/compliance-renewals', icon: RefreshCw },
-  ];
 
   const officerNav = [
     { section: 'SCRUTINY DESK' },
@@ -70,7 +41,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed = false }) => {
     { name: 'Schemes Catalog', to: '/schemes', icon: Award },
   ];
 
-  const navItems = user?.role === 'ADMIN' ? adminNav : isOfficer ? officerNav : citizenNav;
+  const navItems = user?.role === 'ADMIN' ? adminNav : officerNav;
 
 
   return (

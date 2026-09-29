@@ -3,6 +3,8 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useApplication } from '../context/ApplicationContext';
 import { DashboardLayout } from '../components/common/DashboardLayout';
+import { WorkflowProgressIndicator } from '../components/common/WorkflowProgressIndicator';
+import { WorkflowNavigationFooter } from '../components/common/WorkflowNavigationFooter';
 import { StatusBadge } from '../components/common/StatusBadge';
 import {
   ShieldCheck,
@@ -10,7 +12,6 @@ import {
   MapPin,
   FileCheck2,
   FolderLock,
-  ArrowRight,
   Printer,
   ClockAlert,
   GitFork,
@@ -66,6 +67,9 @@ export const ApplicationReviewPage: React.FC = () => {
         { label: 'Application Review' },
       ]}
     >
+      {/* Horizontal Progress Indicator for Citizen Workflow */}
+      <WorkflowProgressIndicator currentStep="review" />
+
       {/* Post-Submission Confirmation Screen */}
       {submissionCompleted && submittedData ? (
         <div className="space-y-8 animate-in fade-in">
@@ -373,33 +377,17 @@ export const ApplicationReviewPage: React.FC = () => {
             </div>
           </div>
 
-          {/* 6. Submit Button */}
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-6 bg-slate-900 text-white rounded-2xl">
-            <div>
-              <div className="text-xs font-bold text-amber-400 uppercase tracking-wider">Final Statutory Filing</div>
-              <p className="text-xs text-gray-300 mt-0.5">
-                Consolidated submission routes simultaneously to MPCB, DISH, Fire Services, MIDC, and Electrical Inspectorate.
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={handleSubmit}
-              disabled={isSubmitting}
-              className="w-full sm:w-auto px-8 py-3.5 bg-amber-500 hover:bg-amber-600 text-slate-950 font-extrabold rounded-xl text-xs uppercase tracking-wider shadow-lg transition transform active:scale-98 flex items-center justify-center gap-2 disabled:opacity-50"
-            >
-              {isSubmitting ? (
-                <>
-                  <div className="w-4 h-4 border-2 border-slate-950 border-t-transparent rounded-full animate-spin" />
-                  <span>Submitting Consolidated Application...</span>
-                </>
-              ) : (
-                <>
-                  <span>Submit Consolidated Application</span>
-                  <ArrowRight className="w-4 h-4" />
-                </>
-              )}
-            </button>
-          </div>
+          {/* Navigation Footer: Back to Documents & Consolidated Submission */}
+          <WorkflowNavigationFooter
+            backUrl="/document-checklist"
+            backLabel="Back to Documents"
+            onContinue={handleSubmit}
+            continueLabel="Submit Consolidated Application"
+            title="Step 4 of 4: Final Statutory Filing"
+            helperText="Consolidated submission routes simultaneously to MPCB, DISH, Fire Services, MIDC, and Electrical Inspectorate."
+            isContinueDisabled={!declarationAgreed || isSubmitting}
+            isLoading={isSubmitting}
+          />
         </div>
       )}
     </DashboardLayout>

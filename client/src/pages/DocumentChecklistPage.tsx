@@ -3,11 +3,12 @@ import { useNavigate } from 'react-router-dom';
 import { useApplication } from '../context/ApplicationContext';
 import { documentService, MissingDocumentReport } from '../services/document.service';
 import { DashboardLayout } from '../components/common/DashboardLayout';
+import { WorkflowProgressIndicator } from '../components/common/WorkflowProgressIndicator';
+import { WorkflowNavigationFooter } from '../components/common/WorkflowNavigationFooter';
 import { StatusBadge } from '../components/common/StatusBadge';
 import {
   Upload,
   FolderLock,
-  ArrowRight,
   ScanEye,
   FileText,
   Clock,
@@ -87,6 +88,9 @@ export const DocumentChecklistPage: React.FC = () => {
         </div>
       }
     >
+      {/* Horizontal Progress Indicator for Citizen Workflow */}
+      <WorkflowProgressIndicator currentStep="documents" />
+
       {/* Missing Document Detection Banner (Rule Engine & Checklist Integration) */}
       {missingReport && missingReport.totalMissing > 0 && (
         <div className="bg-amber-50/90 border border-amber-300 rounded-2xl p-4 mb-6 shadow-xs animate-in fade-in">
@@ -303,33 +307,25 @@ export const DocumentChecklistPage: React.FC = () => {
         ))}
       </div>
 
-      {/* Bottom Sticky Action Card */}
-      <div className="p-6 bg-slate-900 text-white rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-4">
-        <div>
-          <div className="text-xs font-bold text-amber-400 uppercase tracking-wider">
-            Document Readiness: {counts.uploaded} of {counts.total} Files Prepared
-          </div>
-          <p className="text-xs text-gray-300 mt-0.5">
-            Use the AI Document Verification tool to inspect blueprints and layouts prior to consolidated submission.
-          </p>
-        </div>
-        <div className="flex items-center gap-3">
+      {/* Workflow Navigation Footer: Back to Approvals & Continue to Review & Submit */}
+      <WorkflowNavigationFooter
+        backUrl="/applicable-approvals"
+        backLabel="Back to Approvals"
+        continueUrl="/application/review"
+        continueLabel="Continue to Review & Submit"
+        title="Step 3 of 4: Statutory Documents"
+        helperText={`Prepared ${counts.uploaded} of ${counts.total} mandatory statutory documents.`}
+        extraActions={
           <button
+            type="button"
             onClick={() => navigate('/document-verification')}
-            className="px-5 py-2.5 bg-blue-800 hover:bg-blue-700 text-white font-bold rounded-xl text-xs transition flex items-center gap-2"
+            className="px-4 py-2.5 bg-blue-850 hover:bg-blue-800 text-white font-bold rounded-xl text-xs transition flex items-center gap-2 border border-blue-700 cursor-pointer"
           >
             <ScanEye className="w-4 h-4 text-amber-400" />
             <span>AI Verification Tool</span>
           </button>
-          <button
-            onClick={() => navigate('/application/review')}
-            className="px-6 py-2.5 bg-amber-500 hover:bg-amber-600 text-slate-950 font-extrabold rounded-xl text-xs shadow-md transition flex items-center gap-2"
-          >
-            <span>Proceed to Review & Submit</span>
-            <ArrowRight className="w-4 h-4" />
-          </button>
-        </div>
-      </div>
+        }
+      />
     </DashboardLayout>
   );
 };

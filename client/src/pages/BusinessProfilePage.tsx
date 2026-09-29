@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApplication } from '../context/ApplicationContext';
 import { DashboardLayout } from '../components/common/DashboardLayout';
+import { WorkflowProgressIndicator } from '../components/common/WorkflowProgressIndicator';
+import { WorkflowNavigationFooter } from '../components/common/WorkflowNavigationFooter';
 import { BusinessProfileData, LegalEntityType, PollutionCategory } from '../types';
 import {
   Building2,
@@ -150,6 +152,9 @@ export const BusinessProfilePage: React.FC = () => {
         </div>
       }
     >
+      {/* Horizontal Progress Indicator for Citizen Workflow */}
+      <WorkflowProgressIndicator currentStep="profile" />
+
       {saveFeedback && (
         <div className="mb-6 p-4 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center gap-2 text-emerald-800 text-xs font-semibold animate-in fade-in">
           <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
@@ -773,31 +778,27 @@ export const BusinessProfilePage: React.FC = () => {
           </div>
         </div>
 
-        {/* Footer Submit CTA */}
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-6 bg-slate-900 text-white rounded-2xl">
-          <div>
-            <div className="text-xs font-bold text-amber-400 uppercase tracking-wider">Ready for Dynamic Assessment</div>
-            <p className="text-xs text-gray-300 mt-0.5">
-              Profile details will feed the statutory rule evaluation engine to generate applicable approvals.
-            </p>
-          </div>
-          <div className="flex items-center gap-3 w-full sm:w-auto">
+        {/* Navigation Footer: Back to Dashboard & Continue to Assessment */}
+        <WorkflowNavigationFooter
+          backUrl="/dashboard"
+          backLabel="Back to Dashboard"
+          title="Step 1 of 4: Business Profile"
+          helperText="Parameters will dynamically evaluate applicable approvals under Maharashtra RTS Act."
+          continueType="submit"
+          continueLabel="Save & Continue to Assessment"
+          isLoading={isSaving}
+          extraActions={
             <button
               type="button"
               onClick={handleSaveDraft}
-              className="w-full sm:w-auto px-4 py-3 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-xs font-bold transition"
+              disabled={isSaving}
+              className="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 border border-slate-700 cursor-pointer disabled:opacity-50"
             >
-              Save Draft
+              <Save className="w-3.5 h-3.5" />
+              <span>Save Draft</span>
             </button>
-            <button
-              type="submit"
-              className="w-full sm:w-auto px-6 py-3 bg-amber-500 hover:bg-amber-600 text-slate-950 font-extrabold rounded-xl text-xs shadow-md transition flex items-center justify-center gap-2 transform hover:scale-102"
-            >
-              <span>Submit & Evaluate Approvals</span>
-              <ArrowRight className="w-4 h-4" />
-            </button>
-          </div>
-        </div>
+          }
+        />
       </form>
     </DashboardLayout>
   );

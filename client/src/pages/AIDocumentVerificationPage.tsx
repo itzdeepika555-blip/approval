@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useApplication } from '../context/ApplicationContext';
 import { documentService } from '../services/document.service';
 import { DashboardLayout } from '../components/common/DashboardLayout';
+import { WorkflowNavigationFooter } from '../components/common/WorkflowNavigationFooter';
 import { StatusBadge } from '../components/common/StatusBadge';
 import {
   ScanEye,
@@ -400,6 +401,15 @@ export const AIDocumentVerificationPage: React.FC = () => {
           )}
         </div>
       </div>
+
+      <WorkflowNavigationFooter
+        backUrl="/document-checklist"
+        backLabel="Back to Document Checklist"
+        continueUrl="/application/review"
+        continueLabel="Proceed to Application Review"
+        title="Document Verification Tool"
+        helperText="Pre-submission OCR and compliance scanning for statutory filings."
+      />
     </DashboardLayout>
   );
 };

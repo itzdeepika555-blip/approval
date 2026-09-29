@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApplication } from '../context/ApplicationContext';
 import { DashboardLayout } from '../components/common/DashboardLayout';
+import { WorkflowNavigationFooter } from '../components/common/WorkflowNavigationFooter';
 import { StatusBadge } from '../components/common/StatusBadge';
 import { Modal } from '../components/common/Modal';
 import { DocumentItem } from '../types';
@@ -313,6 +314,16 @@ export const DocumentWalletPage: React.FC = () => {
           </div>
         </Modal>
       )}
+
+      {/* Workflow Navigation Footer */}
+      <WorkflowNavigationFooter
+        backUrl="/document-checklist"
+        backLabel="Back to Document Checklist"
+        continueUrl="/application/review"
+        continueLabel="Proceed to Review & Submit"
+        title="Document Wallet Desk"
+        helperText="Manage encrypted statutory uploads and verified credentials."
+      />
     </DashboardLayout>
   );
 };

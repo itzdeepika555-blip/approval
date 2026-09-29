@@ -3,6 +3,8 @@ import { useNavigate, Link } from 'react-router-dom';
 import { useApplication } from '../context/ApplicationContext';
 import { approvalService } from '../services/approval.service';
 import { DashboardLayout } from '../components/common/DashboardLayout';
+import { WorkflowProgressIndicator } from '../components/common/WorkflowProgressIndicator';
+import { WorkflowNavigationFooter } from '../components/common/WorkflowNavigationFooter';
 import { StatusBadge } from '../components/common/StatusBadge';
 import {
   Sparkles,
@@ -90,6 +92,9 @@ export const SmartAssessmentPage: React.FC = () => {
         </div>
       }
     >
+      {/* Horizontal Progress Indicator for Citizen Workflow */}
+      <WorkflowProgressIndicator currentStep="assessment" substepTitle="Statutory Rule Evaluation" />
+
       {/* Prominent Statutory Rule Explanation mandated by user */}
       <div className="bg-gradient-to-r from-blue-900 via-indigo-950 to-blue-950 text-white rounded-2xl p-6 mb-8 shadow-sm border border-blue-800">
         <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-amber-400 mb-2">
@@ -282,21 +287,23 @@ export const SmartAssessmentPage: React.FC = () => {
                   ))}
                 </div>
 
-                {/* Bottom CTA to Applicable Approvals */}
-                <div className="mt-6 pt-4 border-t border-gray-100 flex items-center justify-end">
-                  <button
-                    onClick={() => navigate('/applicable-approvals')}
-                    className="px-6 py-2.5 bg-amber-500 hover:bg-amber-600 text-slate-950 font-extrabold rounded-xl text-xs shadow-md transition flex items-center gap-2"
-                  >
-                    <span>Proceed to Applicable Approvals Catalog</span>
-                    <ArrowRight className="w-4 h-4" />
-                  </button>
-                </div>
               </div>
             </div>
           )}
         </div>
       </div>
+
+      {/* Workflow Navigation Footer: Back to Business Profile & Continue to Applicable Approvals */}
+      <WorkflowNavigationFooter
+        backUrl="/business-profile"
+        backLabel="Back to Business Profile"
+        continueUrl="/applicable-approvals"
+        continueLabel="Continue to Applicable Approvals"
+        title="Step 2 of 4: Approval Assessment"
+        helperText="Review the list of determined statutory clearances, approvals and licenses."
+        isContinueDisabled={isEvaluating}
+        isLoading={isEvaluating}
+      />
     </DashboardLayout>
   );
 };

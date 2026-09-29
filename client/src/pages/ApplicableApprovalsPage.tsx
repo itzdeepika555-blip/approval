@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApplication } from '../context/ApplicationContext';
 import { DashboardLayout } from '../components/common/DashboardLayout';
+import { WorkflowProgressIndicator } from '../components/common/WorkflowProgressIndicator';
+import { WorkflowNavigationFooter } from '../components/common/WorkflowNavigationFooter';
 import { StatusBadge } from '../components/common/StatusBadge';
 import { Modal } from '../components/common/Modal';
 import { ApplicableApproval } from '../types';
@@ -61,6 +63,9 @@ export const ApplicableApprovalsPage: React.FC = () => {
         </button>
       }
     >
+      {/* Horizontal Progress Indicator for Citizen Workflow */}
+      <WorkflowProgressIndicator currentStep="assessment" substepTitle="Statutory Approvals Catalog" />
+
       {/* Information Banner */}
       <div className="bg-white rounded-2xl border border-blue-200 p-4 mb-6 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div className="flex items-center gap-3">
@@ -384,22 +389,15 @@ export const ApplicableApprovalsPage: React.FC = () => {
         </Modal>
       )}
 
-      {/* Bottom Sticky CTA */}
-      <div className="p-6 bg-slate-900 text-white rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-4">
-        <div>
-          <div className="text-xs font-bold text-amber-400 uppercase tracking-wider">Next Step: Document Assembly</div>
-          <p className="text-xs text-gray-300 mt-0.5">
-            Assemble and verify required blueprints, project reports, and NOC drawings for all {filteredApprovals.length} clearances.
-          </p>
-        </div>
-        <button
-          onClick={() => navigate('/document-checklist')}
-          className="px-6 py-3 bg-amber-500 hover:bg-amber-600 text-slate-950 font-extrabold rounded-xl text-xs shadow-md transition flex items-center gap-2 shrink-0 transform hover:scale-102"
-        >
-          <span>Open Document Checklist</span>
-          <ArrowRight className="w-4 h-4" />
-        </button>
-      </div>
+      {/* Workflow Navigation Footer: Back to Assessment & Continue to Document Checklist */}
+      <WorkflowNavigationFooter
+        backUrl="/start-assessment"
+        backLabel="Back to Assessment"
+        continueUrl="/document-checklist"
+        continueLabel="Continue to Document Checklist"
+        title="Step 2 of 4: Clearance Assessment"
+        helperText={`Assemble and verify required statutory blueprints, reports, and NOC drawings for all ${filteredApprovals.length} clearances.`}
+      />
     </DashboardLayout>
   );
 };
