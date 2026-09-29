@@ -8,15 +8,12 @@ import { SLAProgress } from '../components/common/SLAProgress';
 import { ApplicationTrackingTimeline } from '../components/common/ApplicationTrackingTimeline';
 import {
   PlusCircle,
-  Building2,
   FileCheck2,
   AlertTriangle,
-  FolderLock,
   ArrowRight,
   ShieldCheck,
   CalendarDays,
   FileText,
-  Award,
   ChevronRight,
   Inbox,
   Eye,
@@ -159,10 +156,8 @@ export const CitizenDashboardPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Main Grid: Active Application Details & Live SLA */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
-        {/* Active Application Card or Empty State */}
-        <div className="lg:col-span-2 bg-white rounded-2xl border border-gray-200 shadow-xs overflow-hidden">
+      {/* Active Application Card or Empty State */}
+      <div className="bg-white rounded-2xl border border-gray-200 shadow-xs overflow-hidden mb-8">
           {hasSubmission ? (
             <div>
               <div className="p-6 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-gray-50/60">
@@ -350,72 +345,6 @@ export const CitizenDashboardPage: React.FC = () => {
           )}
         </div>
 
-        {/* Right Column: Actions & Quick Modules */}
-        <div className="space-y-6">
-          {/* Quick Navigator Hub */}
-          <div className="bg-white rounded-2xl border border-gray-200 p-5 shadow-xs">
-            <h4 className="text-xs font-bold text-gray-800 uppercase tracking-wider mb-3">
-              Application Modules
-            </h4>
-            <div className="space-y-1 text-xs">
-              <Link
-                to="/business-profile"
-                className="flex items-center justify-between p-2.5 rounded-xl hover:bg-blue-50 text-gray-700 hover:text-blue-900 font-medium transition"
-              >
-                <div className="flex items-center gap-2.5">
-                  <Building2 className="w-4 h-4 text-blue-600" />
-                  <span>Business Profile Setup</span>
-                </div>
-                <ChevronRight className="w-4 h-4 text-gray-400" />
-              </Link>
-
-              <Link
-                to="/start-assessment"
-                className="flex items-center justify-between p-2.5 rounded-xl hover:bg-blue-50 text-gray-700 hover:text-blue-900 font-medium transition"
-              >
-                <div className="flex items-center gap-2.5">
-                  <FileCheck2 className="w-4 h-4 text-indigo-600" />
-                  <span>Smart Approval Assessment</span>
-                </div>
-                <ChevronRight className="w-4 h-4 text-gray-400" />
-              </Link>
-
-              <Link
-                to="/wallet"
-                className="flex items-center justify-between p-2.5 rounded-xl hover:bg-blue-50 text-gray-700 hover:text-blue-900 font-medium transition"
-              >
-                <div className="flex items-center gap-2.5">
-                  <FolderLock className="w-4 h-4 text-emerald-600" />
-                  <span>Verified Document Wallet</span>
-                </div>
-                <ChevronRight className="w-4 h-4 text-gray-400" />
-              </Link>
-
-              <Link
-                to="/inspections"
-                className="flex items-center justify-between p-2.5 rounded-xl hover:bg-blue-50 text-gray-700 hover:text-blue-900 font-medium transition"
-              >
-                <div className="flex items-center gap-2.5">
-                  <CalendarDays className="w-4 h-4 text-amber-600" />
-                  <span>Joint Inspection Scheduler</span>
-                </div>
-                <ChevronRight className="w-4 h-4 text-gray-400" />
-              </Link>
-
-              <Link
-                to="/schemes"
-                className="flex items-center justify-between p-2.5 rounded-xl hover:bg-blue-50 text-gray-700 hover:text-blue-900 font-medium transition"
-              >
-                <div className="flex items-center gap-2.5">
-                  <Award className="w-4 h-4 text-purple-600" />
-                  <span>Maharashtra PSI Schemes</span>
-                </div>
-                <ChevronRight className="w-4 h-4 text-gray-400" />
-              </Link>
-            </div>
-          </div>
-        </div>
-      </div>
     </DashboardLayout>
   );
 };
