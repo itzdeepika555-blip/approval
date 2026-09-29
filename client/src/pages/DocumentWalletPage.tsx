@@ -146,11 +146,10 @@ export const DocumentWalletPage: React.FC = () => {
             key={tab.key}
             type="button"
             onClick={() => setFilter(tab.key as any)}
-            className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition ${
-              filter === tab.key
+            className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition ${filter === tab.key
                 ? 'bg-slate-900 text-white shadow-xs'
                 : 'bg-white text-gray-600 border border-gray-200 hover:border-gray-300'
-            }`}
+              }`}
           >
             {tab.label}
           </button>
