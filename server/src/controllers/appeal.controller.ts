@@ -5,7 +5,13 @@ import { AuthenticatedRequest } from '../types';
 export class AppealController {
   public async fileAppeal(req: AuthenticatedRequest, res: Response, next: NextFunction) {
     try {
-      const citizenId = req.user?.userId || 'user-citizen-demo';
+      const citizenId = req.user?.userId;
+      if (!citizenId) {
+        return res.status(401).json({
+          success: false,
+          error: 'Unauthorized: Authentication required to file statutory appeal.',
+        });
+      }
       const appeal = await appealService.fileAppeal(citizenId, req.body);
       res.status(201).json({
         success: true,

@@ -5,6 +5,7 @@ import { useApplication } from '../context/ApplicationContext';
 import { DashboardLayout } from '../components/common/DashboardLayout';
 import { StatusBadge } from '../components/common/StatusBadge';
 import { SLAProgress } from '../components/common/SLAProgress';
+import { ApplicationTrackingTimeline } from '../components/common/ApplicationTrackingTimeline';
 import {
   PlusCircle,
   Building2,
@@ -18,11 +19,12 @@ import {
   Award,
   ChevronRight,
   Inbox,
+  Eye,
 } from 'lucide-react';
 
 export const CitizenDashboardPage: React.FC = () => {
   const { user } = useAuth();
-  const { profile, activeSubmission, approvals } = useApplication();
+  const { profile, activeSubmission, submissions, setActiveSubmission, approvals } = useApplication();
   const navigate = useNavigate();
 
   const hasSubmission = Boolean(activeSubmission);
@@ -37,13 +39,32 @@ export const CitizenDashboardPage: React.FC = () => {
       subtitle="Industrialist Central Desk • Maharashtra Single Window Portal"
       breadcrumbs={[{ label: 'Home', href: '/' }, { label: 'Citizen Dashboard' }]}
       actions={
-        <button
-          onClick={() => navigate('/business-profile')}
-          className="px-5 py-2.5 bg-amber-500 hover:bg-amber-600 text-slate-950 font-extrabold rounded-xl shadow-md transition flex items-center gap-2 text-xs uppercase tracking-wide transform hover:-translate-y-0.5"
-        >
-          <PlusCircle className="w-4 h-4" />
-          <span>{hasSubmission ? 'Update Profile' : 'Start New Application'}</span>
-        </button>
+        hasSubmission ? (
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => navigate('/application/review')}
+              className="px-4 py-2 bg-blue-900 hover:bg-blue-800 text-white font-bold rounded-xl shadow-xs transition flex items-center gap-1.5 text-xs cursor-pointer"
+            >
+              <Eye className="w-3.5 h-3.5 text-amber-400" />
+              <span>View Application (Read-Only)</span>
+            </button>
+            <button
+              onClick={() => navigate('/application/tracking')}
+              className="px-4 py-2 bg-emerald-700 hover:bg-emerald-800 text-white font-bold rounded-xl shadow-xs transition flex items-center gap-1.5 text-xs cursor-pointer"
+            >
+              <FileCheck2 className="w-3.5 h-3.5 text-emerald-200" />
+              <span>Tracking Timeline</span>
+            </button>
+          </div>
+        ) : (
+          <button
+            onClick={() => navigate('/business-profile')}
+            className="px-5 py-2.5 bg-amber-500 hover:bg-amber-600 text-slate-950 font-extrabold rounded-xl shadow-md transition flex items-center gap-2 text-xs uppercase tracking-wide transform hover:-translate-y-0.5 cursor-pointer"
+          >
+            <PlusCircle className="w-4 h-4" />
+            <span>Start New Application</span>
+          </button>
+        )
       }
     >
       {/* Top Banner Notice on the Statutory Flow */}
@@ -64,7 +85,7 @@ export const CitizenDashboardPage: React.FC = () => {
         </div>
         <button
           onClick={() => navigate(hasSubmission ? '/application/tracking' : '/business-profile')}
-          className="shrink-0 px-4 py-2 bg-white text-blue-950 hover:bg-blue-50 font-bold rounded-xl text-xs transition shadow-sm flex items-center gap-1.5"
+          className="shrink-0 px-4 py-2 bg-white text-blue-950 hover:bg-blue-50 font-bold rounded-xl text-xs transition shadow-sm flex items-center gap-1.5 cursor-pointer"
         >
           <span>{hasSubmission ? 'Track Approvals' : 'Fill Business Profile'}</span>
           <ChevronRight className="w-4 h-4" />
@@ -81,7 +102,7 @@ export const CitizenDashboardPage: React.FC = () => {
             </div>
           </div>
           <div className="text-2xl font-extrabold text-gray-900">
-            {hasSubmission ? '01' : '00'}
+            {submissions.length > 0 ? (submissions.length < 10 ? `0${submissions.length}` : submissions.length) : '00'}
           </div>
           <div className="text-[11px] text-gray-500 mt-1 flex items-center gap-1">
             {hasSubmission ? (
@@ -146,29 +167,59 @@ export const CitizenDashboardPage: React.FC = () => {
             <div>
               <div className="p-6 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-gray-50/60">
                 <div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     <span className="font-mono text-xs font-bold text-blue-900 bg-blue-100 px-2.5 py-0.5 rounded-md">
-                      {appNumber}
+                      Ref: {appNumber}
                     </span>
                     <StatusBadge status={activeSubmission?.status || 'UNDER_REVIEW'} />
+                    {activeSubmission?.submittedAt && (
+                      <span className="text-[11px] text-gray-500 font-mono">
+                        Filed: {new Date(activeSubmission.submittedAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                      </span>
+                    )}
                   </div>
                   <h3 className="text-base font-extrabold text-gray-900 mt-2">
-                    {profile.businessName || 'Industrial Unit'}
+                    {activeSubmission?.businessProfile?.businessName || profile.businessName || 'Industrial Unit'}
                   </h3>
                   <p className="text-xs text-gray-500">
                     {profile.surveyPlotNumber ? `${profile.surveyPlotNumber}, ` : ''}{profile.midcEstateName || profile.district || 'Maharashtra'}
                   </p>
                 </div>
-                <Link
-                  to="/application/tracking"
-                  className="px-3.5 py-2 bg-blue-50 text-blue-800 hover:bg-blue-100 rounded-xl text-xs font-bold transition flex items-center gap-1.5 self-start sm:self-auto"
-                >
-                  <span>Track Departments</span>
-                  <ArrowRight className="w-3.5 h-3.5" />
-                </Link>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => navigate('/application/review')}
+                    className="px-3.5 py-2 bg-blue-900 hover:bg-blue-800 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-xs"
+                  >
+                    <Eye className="w-3.5 h-3.5 text-amber-400" />
+                    <span>View Application</span>
+                  </button>
+                  <Link
+                    to="/application/tracking"
+                    className="px-3.5 py-2 bg-blue-50 text-blue-800 hover:bg-blue-100 rounded-xl text-xs font-bold transition flex items-center gap-1.5 self-start sm:self-auto"
+                  >
+                    <span>Track Status</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </Link>
+                </div>
               </div>
 
               <div className="p-6 space-y-6">
+                {/* 6-Stage Tracking Timeline Component */}
+                <div className="bg-slate-50/70 border border-slate-200/80 rounded-2xl p-5">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-2">
+                      <FileCheck2 className="w-4 h-4 text-blue-600" />
+                      <span>Application Scrutiny & Approval Stages</span>
+                    </div>
+                    <span className="text-[11px] text-blue-700 font-medium">Maharashtra RTS SLA: 45 Days</span>
+                  </div>
+                  <ApplicationTrackingTimeline
+                    status={activeSubmission?.status || 'UNDER_REVIEW'}
+                    submittedAt={activeSubmission?.submittedAt}
+                    compact={true}
+                  />
+                </div>
+
                 {/* Statutory SLA progress bar */}
                 <div>
                   <div className="text-xs font-bold text-gray-700 mb-2 uppercase tracking-wider flex items-center justify-between">
@@ -227,6 +278,46 @@ export const CitizenDashboardPage: React.FC = () => {
                     </div>
                   </div>
                 )}
+
+                {/* Multiple Applications Switcher if user has more than 1 */}
+                {submissions.length > 1 && (
+                  <div className="pt-4 border-t border-gray-100">
+                    <div className="text-xs font-bold text-gray-700 mb-3 uppercase tracking-wider">
+                      All Your Submitted Applications ({submissions.length})
+                    </div>
+                    <div className="space-y-2">
+                      {submissions.map((sub) => (
+                        <div
+                          key={sub.id}
+                          onClick={() => setActiveSubmission(sub)}
+                          className={`p-3 rounded-xl border flex items-center justify-between cursor-pointer transition ${
+                            sub.id === activeSubmission?.id
+                              ? 'border-blue-500 bg-blue-50/50'
+                              : 'border-gray-200 hover:bg-gray-50'
+                          }`}
+                        >
+                          <div className="flex items-center gap-2">
+                            <FileText className={`w-4 h-4 ${sub.id === activeSubmission?.id ? 'text-blue-700' : 'text-gray-400'}`} />
+                            <div>
+                              <span className="font-mono text-xs font-bold text-gray-900">{sub.applicationNumber}</span>
+                              <span className="text-[11px] text-gray-500 ml-2">
+                                {sub.businessProfile?.businessName || 'Industrial Application'}
+                              </span>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <StatusBadge status={sub.status || 'UNDER_REVIEW'} />
+                            {sub.id === activeSubmission?.id && (
+                              <span className="text-[10px] bg-blue-600 text-white font-bold px-2 py-0.5 rounded-md">
+                                Selected
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           ) : (
@@ -235,7 +326,7 @@ export const CitizenDashboardPage: React.FC = () => {
                 <Inbox className="w-7 h-7" />
               </div>
               <h3 className="text-base font-extrabold text-gray-900">
-                No Active Consolidated Application
+                No applications submitted yet
               </h3>
               <p className="text-xs text-gray-500 max-w-md mx-auto mt-2 leading-relaxed">
                 You have not filed any industrial applications yet. Click below to begin by entering your enterprise and manufacturing parameters.
@@ -243,14 +334,14 @@ export const CitizenDashboardPage: React.FC = () => {
               <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
                 <button
                   onClick={() => navigate('/business-profile')}
-                  className="px-5 py-2.5 bg-blue-900 hover:bg-blue-800 text-white font-bold rounded-xl text-xs transition shadow-sm flex items-center gap-2"
+                  className="px-5 py-2.5 bg-blue-900 hover:bg-blue-800 text-white font-bold rounded-xl text-xs transition shadow-sm flex items-center gap-2 cursor-pointer"
                 >
                   <PlusCircle className="w-4 h-4 text-amber-400" />
-                  <span>Fill Business Profile</span>
+                  <span>Start New Application</span>
                 </button>
                 <button
                   onClick={() => navigate('/start-assessment')}
-                  className="px-5 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-800 font-bold rounded-xl text-xs transition"
+                  className="px-5 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-800 font-bold rounded-xl text-xs transition cursor-pointer"
                 >
                   Run Smart Assessment
                 </button>

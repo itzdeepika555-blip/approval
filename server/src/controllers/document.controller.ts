@@ -9,11 +9,18 @@ export class DocumentController {
    */
   public async upload(req: AuthenticatedRequest, res: Response, next: NextFunction) {
     try {
-      const userId = req.user?.userId || 'user-citizen-demo';
+      const userId = req.user?.userId;
+      if (!userId) {
+        return res.status(401).json({
+          success: false,
+          message: 'Unauthorized. Authentication token required.',
+        });
+      }
+
       const file = (req as any).file;
 
       if (!file) {
-        // Handle mock or JSON base64 / text upload payload
+        // Handle JSON / text upload payload
         const simulatedFile = {
           originalname: req.body.fileName || 'uploaded_document.pdf',
           mimetype: req.body.mimeType || 'application/pdf',
@@ -44,8 +51,15 @@ export class DocumentController {
    */
   public async getDocuments(req: AuthenticatedRequest, res: Response, next: NextFunction) {
     try {
-      const userId = req.user?.userId || 'user-citizen-demo';
+      const userId = req.user?.userId;
       const role = req.user?.role || 'CITIZEN';
+      if (!userId) {
+        return res.status(401).json({
+          success: false,
+          message: 'Unauthorized. Authentication token required.',
+        });
+      }
+
       const applicationId = req.query.applicationId as string | undefined;
 
       const docs = await documentService.getDocuments(userId, role, applicationId);
@@ -64,8 +78,14 @@ export class DocumentController {
    */
   public async getDocumentById(req: AuthenticatedRequest, res: Response, next: NextFunction) {
     try {
-      const userId = req.user?.userId || 'user-citizen-demo';
+      const userId = req.user?.userId;
       const role = req.user?.role || 'CITIZEN';
+      if (!userId) {
+        return res.status(401).json({
+          success: false,
+          message: 'Unauthorized. Authentication token required.',
+        });
+      }
       const { id } = req.params;
 
       const doc = await documentService.getDocumentById(id, userId, role);
@@ -84,8 +104,14 @@ export class DocumentController {
    */
   public async deleteDocument(req: AuthenticatedRequest, res: Response, next: NextFunction) {
     try {
-      const userId = req.user?.userId || 'user-citizen-demo';
+      const userId = req.user?.userId;
       const role = req.user?.role || 'CITIZEN';
+      if (!userId) {
+        return res.status(401).json({
+          success: false,
+          message: 'Unauthorized. Authentication token required.',
+        });
+      }
       const { id } = req.params;
 
       await documentService.deleteDocument(id, userId, role);
@@ -104,8 +130,14 @@ export class DocumentController {
    */
   public async verifyDocument(req: AuthenticatedRequest, res: Response, next: NextFunction) {
     try {
-      const userId = req.user?.userId || 'user-citizen-demo';
+      const userId = req.user?.userId;
       const role = req.user?.role || 'CITIZEN';
+      if (!userId) {
+        return res.status(401).json({
+          success: false,
+          message: 'Unauthorized. Authentication token required.',
+        });
+      }
       const { id } = req.params;
 
       const analysis = await documentService.reVerifyDocument(id, userId, role);
@@ -125,7 +157,13 @@ export class DocumentController {
    */
   public async getMissingDocuments(req: AuthenticatedRequest, res: Response, next: NextFunction) {
     try {
-      const userId = req.user?.userId || 'user-citizen-demo';
+      const userId = req.user?.userId;
+      if (!userId) {
+        return res.status(401).json({
+          success: false,
+          message: 'Unauthorized. Authentication token required.',
+        });
+      }
       const applicationId = req.query.applicationId as string | undefined;
 
       const summary = await documentService.getMissingDocuments(userId, applicationId);
@@ -145,6 +183,12 @@ export class DocumentController {
   public async getChecklist(req: AuthenticatedRequest, res: Response, next: NextFunction) {
     try {
       const userId = req.user?.userId;
+      if (!userId) {
+        return res.status(401).json({
+          success: false,
+          message: 'Unauthorized. Authentication token required.',
+        });
+      }
       const checklist = await documentService.getChecklist(userId);
       res.status(200).json({
         success: true,
@@ -162,6 +206,12 @@ export class DocumentController {
   public async getWallet(req: AuthenticatedRequest, res: Response, next: NextFunction) {
     try {
       const userId = req.user?.userId;
+      if (!userId) {
+        return res.status(401).json({
+          success: false,
+          message: 'Unauthorized. Authentication token required.',
+        });
+      }
       const wallet = await documentService.getWalletDocuments(userId);
       res.status(200).json({
         success: true,
@@ -178,7 +228,13 @@ export class DocumentController {
    */
   public async verifyWithAI(req: AuthenticatedRequest, res: Response, next: NextFunction) {
     try {
-      const userId = req.user?.userId || 'user-citizen-demo';
+      const userId = req.user?.userId;
+      if (!userId) {
+        return res.status(401).json({
+          success: false,
+          message: 'Unauthorized. Authentication token required.',
+        });
+      }
       const file = (req as any).file || {
         originalname: req.body.fileName || 'document.pdf',
         mimetype: 'application/pdf',

@@ -141,15 +141,21 @@ export class ApprovalService {
         const appliedTime = app.appliedAt ? app.appliedAt.getTime() : activeApp.createdAt.getTime();
         const daysElapsed = Math.max(0, Math.floor((Date.now() - appliedTime) / (1000 * 60 * 60 * 24)));
 
+        const daysRemaining = Math.max(0, sla - daysElapsed);
         return {
+          id: app.id,
           departmentCode: app.department.code,
           departmentName: app.department.name,
           approvalName: app.approval?.name || 'Statutory Approval',
           status: app.status,
           slaDays: sla,
           daysElapsed,
+          daysRemaining,
           officerName: 'Competent Scrutiny Authority',
+          officerAssigned: 'Competent Scrutiny Authority',
           remarks: app.remarks || 'Application under departmental verification.',
+          notes: app.remarks || 'Application under departmental verification.',
+          updatedAt: app.updatedAt ? app.updatedAt.toISOString().substring(0, 10) : new Date().toISOString().substring(0, 10),
         };
       });
     }

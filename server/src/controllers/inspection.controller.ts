@@ -19,7 +19,13 @@ export class InspectionController {
 
   public async bookSlot(req: AuthenticatedRequest, res: Response, next: NextFunction) {
     try {
-      const userId = req.user?.userId || 'user-citizen-demo';
+      const userId = req.user?.userId;
+      if (!userId) {
+        return res.status(401).json({
+          success: false,
+          error: 'Unauthorized: Authentication required to schedule inspection.',
+        });
+      }
       const { slotId, preferredDate, timeSlot, applicationId } = req.body;
 
       if (!slotId || !preferredDate || !timeSlot) {

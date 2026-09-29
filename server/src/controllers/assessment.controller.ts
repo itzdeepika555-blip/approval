@@ -1,6 +1,7 @@
 import { Response, NextFunction } from 'express';
 import { approvalMatchingService } from '../services/approvalMatching.service';
 import { datasetImportService } from '../services/datasetImport.service';
+import { applicationService } from '../services/application.service';
 import { db } from '../services/db.service';
 import { AuthenticatedRequest } from '../types';
 
@@ -16,18 +17,20 @@ export class AssessmentController {
 
       let targetProfile = bodyProfile;
 
-      // If businessProfileId provided or user authenticated, resolve saved profile
+      // If businessProfileId provided or user authenticated, resolve saved profile from PostgreSQL
       if (businessProfileId) {
-        const found = db.businessProfiles.find(p => p.id === businessProfileId);
+        const found = await db.prisma.businessProfile.findUnique({ where: { id: businessProfileId } });
         if (found) targetProfile = { ...found, ...bodyProfile };
       } else if (userId && Object.keys(bodyProfile).length === 0) {
-        const found = db.businessProfiles.find(p => p.userId === userId);
+        const found = await db.prisma.businessProfile.findFirst({
+          where: { userId },
+          orderBy: { createdAt: 'desc' },
+        });
         if (found) targetProfile = found;
       }
 
-      // If still empty, use fallback demo profile
       if (!targetProfile || Object.keys(targetProfile).length === 0) {
-        targetProfile = db.businessProfiles[0] || {};
+        targetProfile = bodyProfile || {};
       }
 
       const result = await approvalMatchingService.assessBusinessProfile(targetProfile, userId, applicationId);
@@ -53,21 +56,19 @@ export class AssessmentController {
       const userId = req.user?.userId;
       const role = req.user?.role;
 
-      const app = db.applications.find(a => a.id === id || a.applicationNumber === id);
-      if (!app) {
-        return res.status(404).json({
+      if (!userId) {
+        return res.status(401).json({
           success: false,
-          message: 'Application not found.',
-          errorCode: 'APPLICATION_NOT_FOUND',
+          message: 'Unauthorized. Authentication token required.',
         });
       }
 
-      // Authorization check: Citizen can only view their own
-      if (role === 'CITIZEN' && app.userId !== userId) {
-        return res.status(403).json({
+      const app = await applicationService.getApplicationById(id, userId, role);
+      if (!app) {
+        return res.status(404).json({
           success: false,
-          message: 'Forbidden: You do not have permission to access approvals for this application.',
-          errorCode: 'FORBIDDEN_APPLICATION_ACCESS',
+          message: 'Application not found or unauthorized access.',
+          errorCode: 'APPLICATION_NOT_FOUND',
         });
       }
 

@@ -1,4 +1,5 @@
 import { db, StoredApplication } from './db.service';
+import { applicationService } from './application.service';
 
 export type EscalationLevel = 'NORMAL' | 'WARNING' | 'CRITICAL' | 'BREACHED_OR_DEEMED';
 
@@ -46,7 +47,7 @@ export class SlaService {
    * under Maharashtra Right to Public Services Act 2015.
    */
   public calculateApplicationSla(application: StoredApplication): ApplicationSlaReport {
-    const profile = db.businessProfiles.find(p => p.id === application.businessProfileId);
+    const profile = (application as any).businessProfile || db.businessProfiles.find(p => p.id === application.businessProfileId);
     const submissionDate = application.submittedAt || application.createdAt || new Date();
     const now = new Date();
 
@@ -163,7 +164,15 @@ export class SlaService {
     applicationId: string,
     requestingUser?: { userId: string; role: string }
   ): Promise<ApplicationSlaReport> {
-    const app = db.applications.find(a => a.id === applicationId || a.applicationNumber === applicationId);
+    let app: StoredApplication | null = null;
+    try {
+      app = await applicationService.getApplicationById(applicationId, requestingUser?.userId, requestingUser?.role);
+    } catch {}
+
+    if (!app) {
+      app = db.applications.find(a => a.id === applicationId || a.applicationNumber === applicationId) || null;
+    }
+
     if (!app) {
       throw new Error(`Application '${applicationId}' not found.`);
     }

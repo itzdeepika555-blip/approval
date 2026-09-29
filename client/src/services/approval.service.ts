@@ -123,7 +123,6 @@ export const approvalService = {
       rtsDaysRemaining: 45,
     };
 
-    localStorage.setItem('maha_active_application', JSON.stringify(submission));
     return submission;
   },
 };

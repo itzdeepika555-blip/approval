@@ -37,7 +37,13 @@ export class NotificationController {
 
   public async markAllAsRead(req: AuthenticatedRequest, res: Response, next: NextFunction) {
     try {
-      const userId = req.user?.userId || 'user-citizen-demo';
+      const userId = req.user?.userId;
+      if (!userId) {
+        return res.status(401).json({
+          success: false,
+          error: 'Unauthorized: Authentication required.',
+        });
+      }
       const result = await notificationService.markAllAsRead(userId);
       res.status(200).json({
         success: true,
@@ -51,7 +57,13 @@ export class NotificationController {
 
   public async dispatchAlert(req: AuthenticatedRequest, res: Response, next: NextFunction) {
     try {
-      const userId = req.user?.userId || 'user-citizen-demo';
+      const userId = req.user?.userId;
+      if (!userId) {
+        return res.status(401).json({
+          success: false,
+          error: 'Unauthorized: Authentication required.',
+        });
+      }
       const { title, message, channel, type, linkUrl, recipientContact } = req.body;
 
       if (!title || !message) {

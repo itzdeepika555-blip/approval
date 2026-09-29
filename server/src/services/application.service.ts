@@ -20,6 +20,21 @@ export class ApplicationService {
       remarks: aa.remarks || undefined,
     }));
 
+    const formattedDocs = (app.documents || []).map((d: any) => ({
+      id: d.id,
+      userId: d.userId,
+      applicationId: d.applicationId,
+      documentType: d.documentTypeCode,
+      title: d.documentName,
+      fileName: d.fileName,
+      fileSize: d.fileSize,
+      mimeType: d.mimeType,
+      fileUrl: d.fileUrl,
+      verificationStatus: d.verifications?.[0]?.verificationStatus || (d.isVerified ? 'PASSED' : 'PENDING'),
+      confidenceScore: d.verifications?.[0]?.confidenceScore ? Number(d.verifications[0].confidenceScore) : undefined,
+      uploadedAt: d.createdAt,
+    }));
+
     return {
       id: app.id,
       userId: app.userId,
@@ -38,7 +53,15 @@ export class ApplicationService {
       createdAt: app.createdAt,
       updatedAt: app.updatedAt,
       approvals,
-    };
+      businessProfile: app.businessProfile,
+      documents: formattedDocs,
+      user: app.user ? {
+        id: app.user.id,
+        fullName: app.user.fullName,
+        email: app.user.email,
+        phone: app.user.phone,
+      } : undefined,
+    } as any;
   }
 
   /**
@@ -46,7 +69,8 @@ export class ApplicationService {
    */
   public async getApplications(userId?: string, role?: string): Promise<StoredApplication[]> {
     const whereClause: any = {};
-    if (role === 'CITIZEN' && userId) {
+    if (role !== 'OFFICER' && role !== 'ADMIN') {
+      if (!userId) return [];
       whereClause.userId = userId;
     }
 
@@ -61,6 +85,14 @@ export class ApplicationService {
         },
         businessProfile: true,
         user: true,
+        documents: {
+          include: {
+            verifications: {
+              orderBy: { checkedAt: 'desc' },
+              take: 1,
+            },
+          },
+        },
       },
       orderBy: { createdAt: 'desc' },
     });
@@ -69,13 +101,20 @@ export class ApplicationService {
   }
 
   /**
-   * Get single application by ID or applicationNumber from PostgreSQL
+   * Get single application by ID or applicationNumber from PostgreSQL with strict IDOR ownership check
    */
-  public async getApplicationById(id: string): Promise<StoredApplication | null> {
+  public async getApplicationById(id: string, userId?: string, role?: string): Promise<StoredApplication | null> {
+    const where: any = {
+      OR: [{ id }, { applicationNumber: id }],
+    };
+
+    if (role !== 'OFFICER' && role !== 'ADMIN') {
+      if (!userId) return null;
+      where.userId = userId;
+    }
+
     const app = await db.prisma.application.findFirst({
-      where: {
-        OR: [{ id }, { applicationNumber: id }],
-      },
+      where,
       include: {
         applicationApprovals: {
           include: {
@@ -85,6 +124,14 @@ export class ApplicationService {
         },
         businessProfile: true,
         user: true,
+        documents: {
+          include: {
+            verifications: {
+              orderBy: { checkedAt: 'desc' },
+              take: 1,
+            },
+          },
+        },
       },
     });
 
@@ -98,38 +145,64 @@ export class ApplicationService {
   public async submitApplication(userId: string, payload: any): Promise<StoredApplication> {
     const appNumber = `MH-${new Date().getFullYear()}-IND-${Math.floor(10000 + Math.random() * 90000)}`;
 
-    // 1. Ensure a valid business profile exists in PostgreSQL
+    const bp = payload.businessProfile || {};
+
+    // 1. Ensure a valid business profile exists in PostgreSQL and sync with submitted form data
     let userProfile = await db.prisma.businessProfile.findFirst({
       where: { userId },
       orderBy: { createdAt: 'desc' },
     });
 
     if (!userProfile) {
-      // Auto-create a base business profile for the applicant if not yet created
       userProfile = await db.prisma.businessProfile.create({
         data: {
           userId,
-          businessName: payload.businessName || 'Industrial Enterprise',
-          legalEntityType: 'PRIVATE_LIMITED',
-          industrySector: payload.industrySector || 'General Manufacturing',
-          businessActivity: 'Industrial operations and manufacturing',
-          district: payload.district || 'Pune',
-          taluka: 'Haveli',
-          pinCode: '411001',
-          isMidcArea: Boolean(payload.isMidcArea),
-          landAreaSqm: 1000,
-          builtUpAreaSqm: 500,
-          investmentPlantMachinery: 10000000,
-          investmentLandBuilding: 5000000,
-          employeeCount: 15,
-          powerRequirementKva: 50,
-          waterRequirementKld: 10,
-          pollutionCategory: 'ORANGE',
-          effluentDischargeKld: 2,
-          hazardousWasteGeneration: false,
-          hasBoiler: false,
-          hasDgSet: false,
+          businessName: bp.businessName || payload.businessName || 'Industrial Enterprise',
+          legalEntityType: bp.legalEntityType || 'PRIVATE_LIMITED',
+          industrySector: bp.industrySector || payload.industrySector || 'General Manufacturing',
+          businessActivity: bp.businessActivity || 'Industrial operations and manufacturing',
+          district: bp.district || payload.district || 'Pune',
+          taluka: bp.taluka || 'Haveli',
+          pinCode: bp.pinCode || '411001',
+          isMidcArea: Boolean(bp.isMidcArea ?? payload.isMidcArea),
+          midcEstateName: bp.midcEstateName || null,
+          surveyPlotNumber: bp.surveyPlotNumber || null,
+          landAreaSqm: bp.landAreaSqm ? Number(bp.landAreaSqm) : 1000,
+          builtUpAreaSqm: bp.builtUpAreaSqm ? Number(bp.builtUpAreaSqm) : 500,
+          investmentPlantMachinery: bp.investmentPlantMachinery ? Number(bp.investmentPlantMachinery) : 10000000,
+          investmentLandBuilding: bp.investmentLandBuilding ? Number(bp.investmentLandBuilding) : 5000000,
+          employeeCount: bp.employeeCount ? Number(bp.employeeCount) : 15,
+          powerRequirementKva: bp.powerRequirementKva ? Number(bp.powerRequirementKva) : 50,
+          waterRequirementKld: bp.waterUsageKld ? Number(bp.waterUsageKld) : 10,
+          pollutionCategory: bp.pollutionCategory || 'ORANGE',
+          effluentDischargeKld: bp.effluentDischargeKld ? Number(bp.effluentDischargeKld) : 2,
+          hazardousWasteGeneration: Boolean(bp.hazardousWasteGeneration),
+          hasBoiler: Boolean(bp.hasBoiler),
+          hasDgSet: Boolean(bp.hasDgSet),
           status: 'ACTIVE',
+        },
+      });
+    } else if (Object.keys(bp).length > 0) {
+      // Sync latest profile details submitted with application
+      userProfile = await db.prisma.businessProfile.update({
+        where: { id: userProfile.id },
+        data: {
+          businessName: bp.businessName || userProfile.businessName,
+          industrySector: bp.industrySector || userProfile.industrySector,
+          district: bp.district || userProfile.district,
+          taluka: bp.taluka || userProfile.taluka,
+          pinCode: bp.pinCode || userProfile.pinCode,
+          isMidcArea: bp.isMidcArea !== undefined ? Boolean(bp.isMidcArea) : userProfile.isMidcArea,
+          midcEstateName: bp.midcEstateName || userProfile.midcEstateName,
+          surveyPlotNumber: bp.surveyPlotNumber || userProfile.surveyPlotNumber,
+          landAreaSqm: bp.landAreaSqm ? Number(bp.landAreaSqm) : userProfile.landAreaSqm,
+          builtUpAreaSqm: bp.builtUpAreaSqm ? Number(bp.builtUpAreaSqm) : userProfile.builtUpAreaSqm,
+          investmentPlantMachinery: bp.investmentPlantMachinery ? Number(bp.investmentPlantMachinery) : userProfile.investmentPlantMachinery,
+          investmentLandBuilding: bp.investmentLandBuilding ? Number(bp.investmentLandBuilding) : userProfile.investmentLandBuilding,
+          employeeCount: bp.employeeCount ? Number(bp.employeeCount) : userProfile.employeeCount,
+          powerRequirementKva: bp.powerRequirementKva ? Number(bp.powerRequirementKva) : userProfile.powerRequirementKva,
+          waterRequirementKld: bp.waterUsageKld ? Number(bp.waterUsageKld) : userProfile.waterRequirementKld,
+          pollutionCategory: bp.pollutionCategory || userProfile.pollutionCategory,
         },
       });
     }
@@ -167,7 +240,34 @@ export class ApplicationService {
       },
     });
 
-    // 4. Create child ApplicationApproval and ApplicationDepartment records
+    // 4. Link unlinked documents uploaded by this user to the newly created application
+    try {
+      await db.prisma.document.updateMany({
+        where: {
+          userId,
+          applicationId: null,
+        },
+        data: {
+          applicationId: newApp.id,
+        },
+      });
+
+      if (Array.isArray(payload.documentIds) && payload.documentIds.length > 0) {
+        await db.prisma.document.updateMany({
+          where: {
+            id: { in: payload.documentIds },
+            userId,
+          },
+          data: {
+            applicationId: newApp.id,
+          },
+        });
+      }
+    } catch (err) {
+      console.warn('[ApplicationService] Error linking documents to application:', err);
+    }
+
+    // 5. Create child ApplicationApproval and ApplicationDepartment records
     const deptsSeen = new Set<string>();
 
     for (const req of requestedItems) {
@@ -211,7 +311,7 @@ export class ApplicationService {
       }
     }
 
-    // 5. Create Notification in PostgreSQL
+    // 6. Create Notification in PostgreSQL
     try {
       await db.prisma.notification.create({
         data: {
@@ -225,7 +325,7 @@ export class ApplicationService {
       });
     } catch {}
 
-    // 6. Create Audit Log in PostgreSQL
+    // 7. Create Audit Log in PostgreSQL
     try {
       await db.prisma.auditLog.create({
         data: {
@@ -238,16 +338,27 @@ export class ApplicationService {
       });
     } catch {}
 
-    // 7. Return complete application from PostgreSQL
-    return (await this.getApplicationById(newApp.id))!;
+    // 8. Return complete application from PostgreSQL
+    return (await this.getApplicationById(newApp.id, userId, 'CITIZEN'))!;
   }
 
   /**
-   * Update existing application in PostgreSQL
+   * Update existing application in PostgreSQL with tenant authorization
    */
-  public async updateApplication(id: string, updates: Partial<StoredApplication>): Promise<StoredApplication | null> {
+  public async updateApplication(
+    id: string,
+    updates: Partial<StoredApplication>,
+    userId?: string,
+    role?: string
+  ): Promise<StoredApplication | null> {
+    const where: any = { OR: [{ id }, { applicationNumber: id }] };
+    if (role !== 'OFFICER' && role !== 'ADMIN') {
+      if (!userId) return null;
+      where.userId = userId;
+    }
+
     const existing = await db.prisma.application.findFirst({
-      where: { OR: [{ id }, { applicationNumber: id }] },
+      where,
     });
 
     if (!existing) return null;
@@ -265,7 +376,7 @@ export class ApplicationService {
       data: dataToUpdate,
     });
 
-    return await this.getApplicationById(existing.id);
+    return await this.getApplicationById(existing.id, userId, role);
   }
 }
 

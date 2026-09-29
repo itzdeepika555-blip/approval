@@ -19,7 +19,7 @@ import {
 } from 'lucide-react';
 
 export const BusinessProfilePage: React.FC = () => {
-  const { profile, saveProfile } = useApplication();
+  const { profile, saveProfile, isSubmitted, activeSubmission } = useApplication();
   const navigate = useNavigate();
 
   const [formData, setFormData] = useState<BusinessProfileData>({ ...profile });
@@ -54,7 +54,12 @@ export const BusinessProfilePage: React.FC = () => {
     if (!formData.industrySector.trim()) errs.industrySector = 'Industry sector is required';
     if (!formData.businessActivity.trim()) errs.businessActivity = 'Detailed business activity is required';
     if (!formData.district) errs.district = 'Select industrial district';
-    if (!formData.location.trim()) errs.location = 'Location or taluka name is required';
+    if (!formData.taluka || !formData.taluka.trim()) errs.taluka = 'Taluka / Tehsil is required';
+    if (!formData.location.trim()) errs.location = 'Location or address is required';
+
+    if (formData.isMidcArea && (!formData.midcEstateName || !formData.midcEstateName.trim())) {
+      errs.midcEstateName = 'MIDC Industrial Estate Name is required for MIDC areas';
+    }
 
     if (formData.investmentPlantMachinery < 0 || isNaN(formData.investmentPlantMachinery)) {
       errs.investmentPlantMachinery = 'Valid investment amount in Plant & Machinery is required';
@@ -76,6 +81,9 @@ export const BusinessProfilePage: React.FC = () => {
     }
     if (!formData.productionCapacity.trim()) {
       errs.productionCapacity = 'Specify planned production capacity';
+    }
+    if (!formData.productionUnit || !formData.productionUnit.trim()) {
+      errs.productionUnit = 'Unit of production (e.g. MT/Mo, Units/Mo) is required';
     }
     if (formData.powerRequirementKva < 0 || isNaN(formData.powerRequirementKva)) {
       errs.powerRequirementKva = 'Sanctioned power load is required';
@@ -100,6 +108,7 @@ export const BusinessProfilePage: React.FC = () => {
   };
 
   const handleSaveDraft = async () => {
+    if (isSubmitted) return;
     setIsSaving(true);
     await saveProfile(formData);
     setIsSaving(false);
@@ -107,8 +116,13 @@ export const BusinessProfilePage: React.FC = () => {
     setTimeout(() => setSaveFeedback(null), 3000);
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (isSubmitted) {
+      navigate('/start-assessment');
+      return;
+    }
+
     if (!validate()) {
       window.scrollTo({ top: 0, behavior: 'smooth' });
       return;
@@ -125,28 +139,34 @@ export const BusinessProfilePage: React.FC = () => {
   return (
     <DashboardLayout
       title="Industrial Business Profile"
-      subtitle="Comprehensive data capture for dynamic statutory rule assessment"
+      subtitle={
+        isSubmitted
+          ? "Read-only application snapshot locked under Maharashtra RTS Act scrutiny"
+          : "Comprehensive data capture for dynamic statutory rule assessment"
+      }
       breadcrumbs={[
         { label: 'Citizen Dashboard', href: '/dashboard' },
         { label: 'Business Profile' },
       ]}
       actions={
         <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={handleSaveDraft}
-            disabled={isSaving}
-            className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold rounded-xl text-xs transition flex items-center gap-1.5"
-          >
-            <Save className="w-3.5 h-3.5" />
-            <span>Save Draft</span>
-          </button>
+          {!isSubmitted && (
+            <button
+              type="button"
+              onClick={handleSaveDraft}
+              disabled={isSaving}
+              className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold rounded-xl text-xs transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+            >
+              <Save className="w-3.5 h-3.5" />
+              <span>Save Draft</span>
+            </button>
+          )}
           <button
             type="button"
             onClick={handleSubmit}
-            className="px-5 py-2 bg-amber-500 hover:bg-amber-600 text-slate-950 font-extrabold rounded-xl text-xs shadow-md transition flex items-center gap-1.5"
+            className="px-5 py-2 bg-amber-500 hover:bg-amber-600 text-slate-950 font-extrabold rounded-xl text-xs shadow-md transition flex items-center gap-1.5 cursor-pointer"
           >
-            <span>Proceed to Assessment</span>
+            <span>{isSubmitted ? 'View Assessment' : 'Proceed to Assessment'}</span>
             <ArrowRight className="w-3.5 h-3.5" />
           </button>
         </div>
@@ -154,6 +174,28 @@ export const BusinessProfilePage: React.FC = () => {
     >
       {/* Horizontal Progress Indicator for Citizen Workflow */}
       <WorkflowProgressIndicator currentStep="profile" />
+
+      {/* Application Submission Lock Notice */}
+      {isSubmitted && (
+        <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 animate-in fade-in">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-blue-900 text-white flex items-center justify-center font-bold shrink-0">
+              <ShieldCheck className="w-5 h-5 text-amber-400" />
+            </div>
+            <div>
+              <h4 className="text-xs font-black text-blue-950 uppercase tracking-wider">
+                Application Submitted & Form Locked (Read-Only Mode)
+              </h4>
+              <p className="text-[11px] text-blue-800">
+                This industrial application is officially lodged in the single window portal. Business profile parameters cannot be edited.
+              </p>
+            </div>
+          </div>
+          <span className="font-mono text-xs font-bold px-3 py-1 bg-white border border-blue-200 text-blue-900 rounded-xl self-start sm:self-auto">
+            {activeSubmission?.applicationNumber || 'MHA-APP-LOCKED'}
+          </span>
+        </div>
+      )}
 
       {saveFeedback && (
         <div className="mb-6 p-4 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center gap-2 text-emerald-800 text-xs font-semibold animate-in fade-in">
@@ -194,9 +236,8 @@ export const BusinessProfilePage: React.FC = () => {
                 type="text"
                 value={formData.businessName}
                 onChange={e => setFormData({ ...formData, businessName: e.target.value })}
-                className={`w-full px-3.5 py-2.5 text-xs rounded-xl border bg-gray-50 focus:bg-white focus:outline-none transition ${
-                  errors.businessName ? 'border-rose-400' : 'border-gray-300 focus:border-blue-600'
-                }`}
+                className={`w-full px-3.5 py-2.5 text-xs rounded-xl border bg-gray-50 focus:bg-white focus:outline-none transition ${errors.businessName ? 'border-rose-400' : 'border-gray-300 focus:border-blue-600'
+                  }`}
               />
               {errors.businessName && <p className="text-[11px] text-rose-600 mt-1">{errors.businessName}</p>}
             </div>
@@ -230,9 +271,8 @@ export const BusinessProfilePage: React.FC = () => {
                 placeholder="e.g. Automobile, Chemicals, Textile, Engineering"
                 value={formData.industrySector}
                 onChange={e => setFormData({ ...formData, industrySector: e.target.value })}
-                className={`w-full px-3.5 py-2.5 text-xs rounded-xl border bg-gray-50 focus:bg-white focus:outline-none transition ${
-                  errors.industrySector ? 'border-rose-400' : 'border-gray-300 focus:border-blue-600'
-                }`}
+                className={`w-full px-3.5 py-2.5 text-xs rounded-xl border bg-gray-50 focus:bg-white focus:outline-none transition ${errors.industrySector ? 'border-rose-400' : 'border-gray-300 focus:border-blue-600'
+                  }`}
               />
               {errors.industrySector && <p className="text-[11px] text-rose-600 mt-1">{errors.industrySector}</p>}
             </div>
@@ -247,9 +287,8 @@ export const BusinessProfilePage: React.FC = () => {
                 placeholder="e.g. Manufacturing of CNC machined engine brackets & auto chassis"
                 value={formData.businessActivity}
                 onChange={e => setFormData({ ...formData, businessActivity: e.target.value })}
-                className={`w-full px-3.5 py-2.5 text-xs rounded-xl border bg-gray-50 focus:bg-white focus:outline-none transition ${
-                  errors.businessActivity ? 'border-rose-400' : 'border-gray-300 focus:border-blue-600'
-                }`}
+                className={`w-full px-3.5 py-2.5 text-xs rounded-xl border bg-gray-50 focus:bg-white focus:outline-none transition ${errors.businessActivity ? 'border-rose-400' : 'border-gray-300 focus:border-blue-600'
+                  }`}
               />
               {errors.businessActivity && <p className="text-[11px] text-rose-600 mt-1">{errors.businessActivity}</p>}
             </div>
@@ -301,9 +340,12 @@ export const BusinessProfilePage: React.FC = () => {
                 type="text"
                 placeholder="e.g. Haveli, Khed, Panvel, Thane"
                 value={formData.taluka}
+                disabled={isSubmitted}
                 onChange={e => setFormData({ ...formData, taluka: e.target.value })}
-                className="w-full px-3.5 py-2.5 text-xs rounded-xl border border-gray-300 bg-gray-50 focus:bg-white focus:outline-none focus:border-blue-600 transition"
+                className={`w-full px-3.5 py-2.5 text-xs rounded-xl border bg-gray-50 focus:bg-white focus:outline-none transition ${errors.taluka ? 'border-rose-400' : 'border-gray-300 focus:border-blue-600'
+                  } ${isSubmitted ? 'cursor-not-allowed opacity-75' : ''}`}
               />
+              {errors.taluka && <p className="text-[11px] text-rose-600 mt-1">{errors.taluka}</p>}
             </div>
 
             <div className="md:col-span-2">
@@ -315,10 +357,10 @@ export const BusinessProfilePage: React.FC = () => {
                 type="text"
                 placeholder="e.g. Chakan Industrial Area, Sector 10"
                 value={formData.location}
+                disabled={isSubmitted}
                 onChange={e => setFormData({ ...formData, location: e.target.value })}
-                className={`w-full px-3.5 py-2.5 text-xs rounded-xl border bg-gray-50 focus:bg-white focus:outline-none transition ${
-                  errors.location ? 'border-rose-400' : 'border-gray-300 focus:border-blue-600'
-                }`}
+                className={`w-full px-3.5 py-2.5 text-xs rounded-xl border bg-gray-50 focus:bg-white focus:outline-none transition ${errors.location ? 'border-rose-400' : 'border-gray-300 focus:border-blue-600'
+                  } ${isSubmitted ? 'cursor-not-allowed opacity-75' : ''}`}
               />
               {errors.location && <p className="text-[11px] text-rose-600 mt-1">{errors.location}</p>}
             </div>
@@ -330,6 +372,7 @@ export const BusinessProfilePage: React.FC = () => {
                   <input
                     type="radio"
                     name="isMidc"
+                    disabled={isSubmitted}
                     checked={formData.isMidcArea === true}
                     onChange={() => setFormData({ ...formData, isMidcArea: true })}
                     className="text-blue-600"
@@ -340,6 +383,7 @@ export const BusinessProfilePage: React.FC = () => {
                   <input
                     type="radio"
                     name="isMidc"
+                    disabled={isSubmitted}
                     checked={formData.isMidcArea === false}
                     onChange={() => setFormData({ ...formData, isMidcArea: false })}
                     className="text-blue-600"
@@ -353,16 +397,19 @@ export const BusinessProfilePage: React.FC = () => {
               <>
                 <div>
                   <label className="block text-xs font-bold text-gray-700 mb-1" htmlFor="midcEstateName">
-                    MIDC Industrial Estate Name
+                    MIDC Industrial Estate Name *
                   </label>
                   <input
                     id="midcEstateName"
                     type="text"
                     placeholder="e.g. Chakan Phase II, Butibori, Waluj"
                     value={formData.midcEstateName || ''}
+                    disabled={isSubmitted}
                     onChange={e => setFormData({ ...formData, midcEstateName: e.target.value })}
-                    className="w-full px-3.5 py-2.5 text-xs rounded-xl border border-gray-300 bg-gray-50 focus:bg-white focus:outline-none focus:border-blue-600 transition"
+                    className={`w-full px-3.5 py-2.5 text-xs rounded-xl border bg-gray-50 focus:bg-white focus:outline-none focus:border-blue-600 transition ${errors.midcEstateName ? 'border-rose-400' : 'border-gray-300'
+                      } ${isSubmitted ? 'cursor-not-allowed opacity-75' : ''}`}
                   />
+                  {errors.midcEstateName && <p className="text-[11px] text-rose-600 mt-1">{errors.midcEstateName}</p>}
                 </div>
 
                 <div>
@@ -374,8 +421,10 @@ export const BusinessProfilePage: React.FC = () => {
                     type="text"
                     placeholder="e.g. Plot No. E-42/1"
                     value={formData.surveyPlotNumber || ''}
+                    disabled={isSubmitted}
                     onChange={e => setFormData({ ...formData, surveyPlotNumber: e.target.value })}
-                    className="w-full px-3.5 py-2.5 text-xs rounded-xl border border-gray-300 bg-gray-50 focus:bg-white focus:outline-none focus:border-blue-600 transition"
+                    className={`w-full px-3.5 py-2.5 text-xs rounded-xl border border-gray-300 bg-gray-50 focus:bg-white focus:outline-none focus:border-blue-600 transition ${isSubmitted ? 'cursor-not-allowed opacity-75' : ''
+                      }`}
                   />
                 </div>
               </>
@@ -480,18 +529,23 @@ export const BusinessProfilePage: React.FC = () => {
                   type="text"
                   placeholder="e.g. 50,000"
                   value={formData.productionCapacity}
+                  disabled={isSubmitted}
                   onChange={e => setFormData({ ...formData, productionCapacity: e.target.value })}
-                  className="w-2/3 px-3.5 py-2.5 text-xs rounded-xl border border-gray-300 bg-gray-50 focus:bg-white focus:outline-none focus:border-blue-600 transition"
+                  className={`w-2/3 px-3.5 py-2.5 text-xs rounded-xl border bg-gray-50 focus:bg-white focus:outline-none transition ${errors.productionCapacity ? 'border-rose-400' : 'border-gray-300 focus:border-blue-600'
+                    } ${isSubmitted ? 'cursor-not-allowed opacity-75' : ''}`}
                 />
                 <input
                   type="text"
                   placeholder="Units/Mo"
                   value={formData.productionUnit}
+                  disabled={isSubmitted}
                   onChange={e => setFormData({ ...formData, productionUnit: e.target.value })}
-                  className="w-1/3 px-2 py-2.5 text-xs rounded-xl border border-gray-300 bg-gray-50 focus:bg-white focus:outline-none focus:border-blue-600 transition"
+                  className={`w-1/3 px-2 py-2.5 text-xs rounded-xl border bg-gray-50 focus:bg-white focus:outline-none transition ${errors.productionUnit ? 'border-rose-400' : 'border-gray-300 focus:border-blue-600'
+                    } ${isSubmitted ? 'cursor-not-allowed opacity-75' : ''}`}
                 />
               </div>
               {errors.productionCapacity && <p className="text-[11px] text-rose-600 mt-1">{errors.productionCapacity}</p>}
+              {errors.productionUnit && <p className="text-[11px] text-rose-600 mt-1">{errors.productionUnit}</p>}
             </div>
           </div>
         </div>
@@ -783,20 +837,26 @@ export const BusinessProfilePage: React.FC = () => {
           backUrl="/dashboard"
           backLabel="Back to Dashboard"
           title="Step 1 of 4: Business Profile"
-          helperText="Parameters will dynamically evaluate applicable approvals under Maharashtra RTS Act."
+          helperText={
+            isSubmitted
+              ? "Application locked in read-only mode."
+              : "Parameters will dynamically evaluate applicable approvals under Maharashtra RTS Act."
+          }
           continueType="submit"
-          continueLabel="Save & Continue to Assessment"
+          continueLabel={isSubmitted ? "View Assessment" : "Save & Continue to Assessment"}
           isLoading={isSaving}
           extraActions={
-            <button
-              type="button"
-              onClick={handleSaveDraft}
-              disabled={isSaving}
-              className="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 border border-slate-700 cursor-pointer disabled:opacity-50"
-            >
-              <Save className="w-3.5 h-3.5" />
-              <span>Save Draft</span>
-            </button>
+            !isSubmitted ? (
+              <button
+                type="button"
+                onClick={handleSaveDraft}
+                disabled={isSaving}
+                className="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 border border-slate-700 cursor-pointer disabled:opacity-50"
+              >
+                <Save className="w-3.5 h-3.5" />
+                <span>Save Draft</span>
+              </button>
+            ) : undefined
           }
         />
       </form>

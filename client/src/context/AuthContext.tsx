@@ -49,8 +49,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const logout = () => {
-    localStorage.removeItem('maha_auth_token');
-    localStorage.removeItem('maha_auth_user');
+    // Thoroughly remove all tokens and cached user/application data to ensure fresh state
+    const keysToRemove: string[] = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && key.startsWith('maha_')) {
+        keysToRemove.push(key);
+      }
+    }
+    keysToRemove.forEach(k => localStorage.removeItem(k));
+
     setAuthState({
       user: null,
       token: null,
